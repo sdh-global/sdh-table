@@ -1,3 +1,5 @@
+from __future__ import unicode_literals
+
 from django import template
 
 from ..models import TableViewProfile
@@ -27,3 +29,10 @@ def tableview_profiles(parser, token):
         raise template.TemplateSyntaxError("%r tag requires exactly 3 arguments" % token.contents.split()[0])
 
     return TicketProfilesNode(user, tableview_name, save_to)    
+
+
+@register.simple_tag
+def args(vars, var, a1, a2=None):
+    vars = vars.copy()
+    vars[var] = str(a1) + str(a2 or '')
+    return vars.urlencode()

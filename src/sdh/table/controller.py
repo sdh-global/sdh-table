@@ -5,7 +5,6 @@ from django.template.loader import render_to_string
 from django.template import RequestContext
 
 
-from .models import TableViewProfile
 from .table import CellTitle, BoundRow
 from .shortcuts import get_object_or_none
 from .paginator import Paginator
@@ -111,6 +110,7 @@ class TableController(object):
         self.search_value = value
 
     def restore(self, profile_id=None):
+        from .models import TableViewProfile
         state = None
 
         if profile_id is None and self.last_profile_key in self.request.session:
@@ -121,7 +121,7 @@ class TableController(object):
         profile_qs = TableViewProfile.objects.filter(tableview_name=self.table.id)
         if self.table.global_profile:
             profile_qs = profile_qs.filter(user__isnull=True)
-        else:
+        elif not self.request.user.is_anonymous:
             profile_qs = profile_qs.filter(user=self.request.user)
 
         if (profile_id is None and self.session_key not in self.request.session) or profile_id == 'default':
@@ -147,6 +147,8 @@ class TableController(object):
         self.request.session["tableview_%s" % self.table.id] = self.get_state()
 
     def save_state(self, name=None):
+        from .models import TableViewProfile
+
         state = self.get_state()
         dump = TableViewProfile.dump_state(state)
 
@@ -175,6 +177,8 @@ class TableController(object):
                 'created': created}
 
     def remove_profile(self, profile_id):
+        from .models import TableViewProfile
+
         qs = TableViewProfile.objects.filter(id=profile_id,
                                              tableview_name=self.table.id,
                                              is_default=False
@@ -237,7 +241,7 @@ class TableController(object):
             if '_save_column_setup' in self.request.POST:
                 prefix = "setup_%s_column_" % self.table.id
                 self.visible_columns = []
-                for key, value in self.request.POST.iteritems():
+                for key, value in self.request.POST.items():
                     if key.startswith(prefix):
                         self.show_column(value)
                 rc = HttpResponseRedirect("?profile=custom")
@@ -267,6 +271,8 @@ class TableController(object):
         self.form_filter_instance = form
 
     def get_saved_state(self):
+        from .models import TableViewProfile
+
         if self.table.global_profile:
             return TableViewProfile.objects.filter(user__isnull=True,
                                                    tableview_name=self.table.id,
@@ -277,12 +283,12 @@ class TableController(object):
                                                    is_default=False).order_by('label')
 
     def iter_columns(self):
-        for key, column in self.table.columns.iteritems():
+        for key, column in self.table.columns.items():
             if key in self.table.permanent or key in self.visible_columns:
                 yield (key, column)
 
     def iter_all_columns(self):
-        for key, column in self.table.columns.iteritems():
+        for key, column in self.table.columns.items():
             yield (key, column)
 
     def iter_all_title(self):

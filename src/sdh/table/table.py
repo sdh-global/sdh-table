@@ -5,7 +5,7 @@ import csv
 import re
 from collections import OrderedDict
 
-
+from django.utils import six
 from django.db.models import Q
 from django.utils.html import strip_tags
 
@@ -23,21 +23,13 @@ def get_declared_fields(bases, attrs, with_base_columns=True):
     used. The distinction is useful in ModelForm subclassing.
     Also integrates any additional media definitions
     """
-    columns = [(column_name, attrs.pop(column_name)) for column_name, obj in attrs.items() if
+    # FIXME: refactoring required for this method to use modern metaclass build approach
+    columns = [(column_name, obj) for column_name, obj in attrs.items() if
                isinstance(obj, widgets.BaseWidget)]
-    columns.sort(key=lambda item: item.creation_counter)
+    columns.sort(key=lambda item: item[1].creation_counter)
 
-    # If this class is subclassing another Form, add that Form's fields.
-    # Note that we loop over the bases in *reverse*. This is necessary in
-    # order to preserve the correct order of fields.
-    if with_base_columns:
-        for base in bases[::-1]:
-            if hasattr(base, 'base_columns'):
-                columns = base.base_columns.items() + columns
-    else:
-        for base in bases[::-1]:
-            if hasattr(base, 'declared_columns'):
-                columns = base.declared_columns.items() + columns
+    for column_name, obj in columns:
+        attrs.pop(column_name)
 
     return OrderedDict(columns)
 
@@ -75,9 +67,9 @@ class DeclarativeFieldsMetaclass(type):
             use_keyboard = getattr(attr_meta, 'use_keyboard', False)
             reload_interval = getattr(attr_meta, 'reload_interval', None)
             global_profile = getattr(attr_meta, 'global_profile', False)
-            template = getattr(attr_meta, 'template', "table_body.html")
-            template_body_content = getattr(attr_meta, 'template_body_content', "table_body_content.html")
-            template_paginator = getattr(attr_meta, 'template_paginator', "template_paginator.html")
+            template = getattr(attr_meta, 'template', template)
+            template_body_content = getattr(attr_meta, 'template_body_content', template_body_content)
+            template_paginator = getattr(attr_meta, 'template_paginator', template_paginator)
             csv_allow = getattr(attr_meta, 'csv_allow', False)
             title = getattr(attr_meta, 'title', None)
             csv_dialect = getattr(attr_meta, 'csv_dialect', csv.excel)
@@ -228,5 +220,5 @@ class BoundRow(object):
         return self.controller.table.get_row_class(self.controller, self.row)
 
 
-class TableView(BaseTableView):
-    __metaclass__ = DeclarativeFieldsMetaclass
+class TableView(six.with_metaclass(DeclarativeFieldsMetaclass, BaseTableView)):
+    """ Table view class """

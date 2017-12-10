@@ -1,0 +1,13 @@
+syntax: glob
+*.o
+*.orig
+*.rej
+*.pyc
+*.tmp
+*.DS_Store
+*~
+.\#*
+env/*
+.idea/
+dist/*
+*egg-info/*

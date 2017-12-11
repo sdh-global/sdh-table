@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 version = '0.1.0'
 
 setup(
-    name='sdh-django-table',
+    name='sdh.django-table',
     version=version,
     url='https://www.djangoproject.com/',
     author='Software Development Hub LLC',

@@ -1,6 +1,9 @@
 from __future__ import unicode_literals
+import codecs
+import csv
+from datetime import datetime
 
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
 from django.template.loader import render_to_string
 from django.template import RequestContext
 
@@ -237,6 +240,9 @@ class TableController(object):
             self.set_sort(self.request.GET.get('sort_by'))
             rc = HttpResponseRedirect('?profile=custom')
 
+        if 'csv' in self.request.GET and self.table.csv_allow:
+            return self.download_csv(self.request)
+
         if self.request.method == 'POST':
             if '_save_column_setup' in self.request.POST:
                 prefix = "setup_%s_column_" % self.table.id
@@ -250,6 +256,20 @@ class TableController(object):
 
         if rc:
             return rc
+
+    def download_csv(self, request):
+        self.paginator = None
+        # Create the HttpResponse object with the appropriate CSV header.
+        response = HttpResponse(content_type='text/csv', charset='utf-8')
+        response['Content-Disposition'] = 'attachment; filename=%s_%s.csv' % (
+            self.table.id,
+            str(datetime.now()))
+
+        writer = csv.writer(response)
+        writer.writerow([cell.html_title() for key, cell in self.iter_title()])
+        for row in self.get_paginated_rows():
+            writer.writerow([cell.as_csv() for cell in row])
+        return response
 
     def process_form_filter(self):
         if not self.table.filter_form:

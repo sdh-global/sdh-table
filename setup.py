@@ -16,7 +16,7 @@ setup(
     eager_resources=['sdh'],
     include_package_data=True,
     entry_points={},
-    install_requires=['Django>=1.8', ],
+    install_requires=['Django>=1.5', ],
     zip_safe=False,
     classifiers=[
         'Development Status :: 3 - Alpha',

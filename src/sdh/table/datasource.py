@@ -55,3 +55,6 @@ class QSDataSource(BaseDatasource):
         self.qs = self.qs.extra(*kargs, **kwargs)
 
         return self
+
+    def _clone(self, *args, **kwargs):
+        return self.qs._clone(*args, **kwargs)

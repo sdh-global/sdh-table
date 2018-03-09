@@ -1,16 +1,26 @@
 from __future__ import unicode_literals
-import codecs
+
+import json
 import csv
 from datetime import datetime
 
-from django.http import JsonResponse, HttpResponseRedirect, HttpResponse
-from django.template.loader import render_to_string
-from django.template import RequestContext
+from django.http import HttpResponseRedirect, HttpResponse
+
+try:
+    from django.http import JsonResponse
+except ImportError:
+    class JsonResponse(HttpResponse):
+        def __init__(self, data, **kwargs):
+            kwargs.setdefault('content_type', 'application/json')
+            dumps_params = kwargs.pop('json_dumps_params', {})
+            data = json.dumps(data, **dumps_params)
+            super(JsonResponse, self).__init__(content=data, **kwargs)
 
 
 from .table import CellTitle, BoundRow
-from .shortcuts import get_object_or_none
+from .shortcuts import get_object_or_none, fn_value, render_to_string
 from .paginator import Paginator
+from .datasource import BaseDatasource
 
 
 class TableController(object):
@@ -55,11 +65,13 @@ class TableController(object):
         return True
 
     def get_paginated_rows(self):
+        _qs = self.source._clone()
+
         if self.paginator:
-            self.source.set_limit(*self.paginator.get_offset())
+            _qs = _qs[slice(*self.paginator.get_offset())]
 
         row_index = 0
-        for row in self.source:
+        for row in _qs:
             row_index += 1
             yield BoundRow(self, row_index, row)
 
@@ -82,7 +94,14 @@ class TableController(object):
                 order_callback = getattr(self.table, 'order_by_%s' % column_name)
                 order_callback(column, self.source, asc)
             else:
-                self.source.set_order(column.refname, asc)
+                if isinstance(self.source, BaseDatasource):
+                    self.source.set_order(column.refname, asc)
+                else:
+                    if asc:
+                        self.source = self.source.order_by(column.refname)
+                    else:
+                        self.source = self.source.order_by('-%s' % column.refname)
+
             return True
 
         return False
@@ -124,7 +143,7 @@ class TableController(object):
         profile_qs = TableViewProfile.objects.filter(tableview_name=self.table.id)
         if self.table.global_profile:
             profile_qs = profile_qs.filter(user__isnull=True)
-        elif not self.request.user.is_anonymous:
+        elif not fn_value(self.request.user.is_anonymous):
             profile_qs = profile_qs.filter(user=self.request.user)
 
         if (profile_id is None and self.session_key not in self.request.session) or profile_id == 'default':
@@ -218,18 +237,22 @@ class TableController(object):
 
             if self.request.GET.get('action') == 'load_page':
                 self.process_form_filter()
-                self.table.apply_filter(self.filter, self.source)
+
+                qs = self.table.apply_filter(self.filter, self.source)
+                if qs:
+                    # Backward compatibility
+                    self.source = qs
+
                 self._init_paginator(self.request.GET.get('page', 1))
                 return JsonResponse({'page_count': self.paginator.get_page_count(),
                                      'body': render_to_string(self.table.template_body_content,
-                                                              RequestContext(self.request,
-                                                                             {'table': self.table,
-                                                                              'controller': self})),
+                                                              {'table': self.table,
+                                                               'controller': self},
+                                                              self.request),
                                      'paginator': render_to_string(self.table.template_paginator,
-                                                                   RequestContext(self.request,
-                                                                                  {'table': self.table,
-                                                                                   'controller': self,
-                                                                                   }))})
+                                                                   {'table': self.table,
+                                                                    'controller': self},
+                                                                   self.request)})
 
         if 'search' in self.request.GET:
             self.apply_search(self.request.GET['search'])
@@ -333,6 +356,4 @@ class TableController(object):
                   'controller': self,
                   }
         kwargs.update(**self.render_dict)
-        return render_to_string(self.table.template,
-                                kwargs,
-                                request=self.request)
+        return render_to_string(self.table.template, kwargs, self.request)

@@ -100,7 +100,7 @@ class Paginator(object):
 
     def get_start_url(self):
         url = '?'
-        if self.request and len(self.request.GET.items()) > 0:
+        if self.request and self.request.GET:
             qset = self.request.GET.copy()
             if 'page' in qset:
                 del qset['page']

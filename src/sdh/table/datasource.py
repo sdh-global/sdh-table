@@ -57,4 +57,7 @@ class QSDataSource(BaseDatasource):
         return self
 
     def _clone(self, *args, **kwargs):
-        return self.qs._clone(*args, **kwargs)
+        if hasattr(self.qs, 'clone') and callable(self.qs.clone):
+            return self.qs.clone()
+        else:
+            return self.qs.all(*args, **kwargs)

@@ -212,6 +212,10 @@ class TableController(object):
         qs.delete()
         return {'status': 'OK'}
 
+    @property
+    def is_filter_active(self):
+        return any(self.get_state()['filter'].values())
+
     def process_request(self, skip_paginator=False):
         self.restore(self.request.GET.get('profile'))
 
@@ -256,6 +260,7 @@ class TableController(object):
 
         if 'search' in self.request.GET:
             self.apply_search(self.request.GET['search'])
+            self.table.apply_filter(self.filter, self.source)
 
         rc = self.process_form_filter()
 

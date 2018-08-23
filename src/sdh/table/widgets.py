@@ -111,7 +111,7 @@ class HrefWidget(BaseWidget):
     def __init__(self, *kargs, **kwargs):
         self.href = None
         self.reverse = None
-        self.reverse_column = 'id'
+        self.reverse_column = ('id',)
         my_kwargs = {}
 
         for key, value in kwargs.items():
@@ -120,23 +120,33 @@ class HrefWidget(BaseWidget):
             elif key == 'reverse':
                 self.reverse = value
             elif key == 'reverse_column':
-                self.reverse_column = value
+                if isinstance(value, str):
+                    self.reverse_column = (value,)
+                else:
+                    self.reverse_column = value
             else:
                 my_kwargs[key] = value
 
         super(HrefWidget, self).__init__(*kargs, **my_kwargs)
 
-    def html_cell(self, row_index, row, **kwargs):
-        href = ''
-        value = self.get_value(row, default='&nbsp;')
-
+    def get_url(self, row):
         if self.reverse:
             try:
-                href = reverse(self.reverse, args=[self.get_value(row, self.reverse_column), ])
+                return reverse(self.reverse, args=[self.get_value(row, col) for col in self.reverse_column])
             except NoReverseMatch:
-                href = "#NoReverseMatch"
+                return "#NoReverseMatch"
 
+    def render_url(self, href, value):
         return mark_safe("<a href='%s'>%s</a>" % (href, value))
+
+    def html_cell(self, row_index, row, **kwargs):
+        href = self.get_url(row)
+        value = self.get_value(row, default='&nbsp;')
+
+        if href:
+            return render_url(href, value)
+
+        return value
 
 
 class ConditionHrefWidget(HrefWidget):
@@ -157,7 +167,8 @@ class ConditionHrefWidget(HrefWidget):
     def html_cell(self, row_index, row, **kwargs):
         _request = kwargs.pop('request', None)
         is_href = True
-        href = ''
+        href = None
+
         value = self.get_value(row, default='&nbsp;')
 
         if self.condition and callable(self.condition):
@@ -166,14 +177,11 @@ class ConditionHrefWidget(HrefWidget):
         if self.acl and hasattr(_request, 'acl'):
             is_href &= bool(getattr(_request.acl, self.acl))
 
-        if self.reverse:
-            try:
-                href = reverse(self.reverse, args=[self.get_value(row, self.reverse_column), ])
-            except NoReverseMatch:
-                href = "#NoReverseMatch"
-
         if is_href:
-            return mark_safe("<a href='%s'>%s</a>" % (href, value))
+            href = self.get_url(row)
+
+        if href:
+            return render_url(href, value)
         return mark_safe(value)
 
 

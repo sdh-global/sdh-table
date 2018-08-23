@@ -144,7 +144,7 @@ class HrefWidget(BaseWidget):
         value = self.get_value(row, default='&nbsp;')
 
         if href:
-            return render_url(href, value)
+            return self.render_url(href, value)
 
         return value
 
@@ -181,7 +181,7 @@ class ConditionHrefWidget(HrefWidget):
             href = self.get_url(row)
 
         if href:
-            return render_url(href, value)
+            return self.render_url(href, value)
         return mark_safe(value)
 
 

@@ -139,6 +139,40 @@ class HrefWidget(BaseWidget):
         return mark_safe("<a href='%s'>%s</a>" % (href, value))
 
 
+class ConditionHrefWidget(HrefWidget):
+    """
+    HrefWidget for table field which render
+    field with href to view if acl condition is True, otherwise the value only.
+    Condition example: either condition='is_customs_retrieve'
+    or condition=lambda request: request.acl.check('customs', 'retrieve')
+    """
+    def __init__(self, *args, **kwargs):
+        self.condition = kwargs.pop('condition', None)
+        super(ConditionHrefWidget, self).__init__(*args, **kwargs)
+
+    def html_cell(self, row_index, row, **kwargs):
+        _request = kwargs.pop('request', None)
+        is_href = False
+        href = ''
+        value = self.get_value(row, default='&nbsp;')
+
+        if self.condition:
+            if callable(self.condition):
+                is_href = self.condition(_request)
+            elif hasattr(_request, 'acl'):
+                is_href = getattr(_request.acl, self.condition)
+
+        if self.reverse:
+            try:
+                href = reverse(self.reverse, args=[self.get_value(row, self.reverse_column), ])
+            except NoReverseMatch:
+                href = "#NoReverseMatch"
+
+        if is_href:
+            return mark_safe("<a href='%s'>%s</a>" % (href, value))
+        return mark_safe(value)
+
+
 class TemplateWidget(BaseWidget):
     def __init__(self, *args, **kwargs):
         self.template = kwargs.pop('template', None)

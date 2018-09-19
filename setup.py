@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-version = '0.4.0'
+version = '0.4.1'
 
 setup(
     name='sdh.table',
@@ -16,7 +16,7 @@ setup(
     eager_resources=['sdh'],
     include_package_data=True,
     entry_points={},
-    install_requires=['Django>=1.5', ],
+    install_requires=['Django>=1.8', ],
     zip_safe=False,
     classifiers=[
         'Development Status :: 3 - Alpha',
@@ -29,8 +29,6 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',

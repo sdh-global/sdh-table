@@ -4,6 +4,7 @@ from django.core.urlresolvers import reverse, NoReverseMatch
 from django.db.models.manager import Manager
 from django.utils import timezone
 from django.utils import formats
+from django.utils.six import string_types
 from django.utils.encoding import force_text
 from django.conf import settings
 from django.utils.safestring import mark_safe
@@ -120,7 +121,7 @@ class HrefWidget(BaseWidget):
             elif key == 'reverse':
                 self.reverse = value
             elif key == 'reverse_column':
-                if isinstance(value, str):
+                if isinstance(value, string_types):
                     self.reverse_column = (value,)
                 else:
                     self.reverse_column = value

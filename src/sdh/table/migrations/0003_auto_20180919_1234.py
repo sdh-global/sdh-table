@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
             model_name='tableviewprofile',
             name='user',
             field=models.ForeignKey(blank=True, null=True,
-                                    on_delete=django.db.models.deletion.CASCADE(),
+                                    on_delete=django.db.models.deletion.CASCADE,
                                     related_name='+',
                                     to=settings.AUTH_USER_MODEL),
         ),

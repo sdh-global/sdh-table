@@ -32,7 +32,7 @@ class BaseWidget(object):
         value = None
         if hasattr(row, keylist[0]):
             value = getattr(row, keylist[0])
-            if callable(value):
+            if callable(value) and not isinstance(value, Manager):
                 value = value()
             if len(keylist) > 1:
                 return self._recursive_value(value, keylist[1:])

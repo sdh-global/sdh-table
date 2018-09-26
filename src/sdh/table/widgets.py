@@ -20,7 +20,6 @@ class BaseWidget(object):
         self.title_attr = title_attr
         self.cell_attr = cell_attr
         self.width = width
-
         # Increase the creation counter, and save our local copy.
         self.creation_counter = BaseWidget.creation_counter
         BaseWidget.creation_counter += 1
@@ -36,18 +35,15 @@ class BaseWidget(object):
                 value = value()
             if len(keylist) > 1:
                 return self._recursive_value(value, keylist[1:])
-
         return value
 
     def get_value(self, row, refname=None, default=None):
         if refname is None and self.refname is None:
             return default
-
         value = self._recursive_value(row, (refname or self.refname).split('__'))
         if value is not None:
             if isinstance(value, Manager):
                 return value.all()
-
             return value
         return default
 
@@ -60,11 +56,9 @@ class BaseWidget(object):
     def _dict2attr(self, attr):
         if not attr:
             return ""
-
         rc = ""
         for key, value in attr.items():
             rc += ' %s="%s"' % (key, value)
-
         return mark_safe(rc)
 
     def html_title_attr(self):
@@ -75,21 +69,41 @@ class BaseWidget(object):
 
 
 class LabelWidget(BaseWidget):
+    """
+    LabelWidget for table field which renders the field with refname param as column value
+    """
     pass
 
 
+class DisplayWidget(BaseWidget):
+    """
+    DisplayWidget for table field which renders the field that has choices set calling get_FOO_display as column value
+    Usage example:
+        shirt_size = widgets.DisplayWidget(_('Shirt size'), refname='shirt_size')
+    """
+    def __init__(self, label, display=None, **kwargs):
+        super(DisplayWidget, self).__init__(label, **kwargs)
+        if not display and self.refname:
+            data_list = self.refname.split('__')
+            data_list[-1] = 'get_%s_display' % data_list[-1]
+            self.display = '__'.join(data_list)
+        else:
+            self.display = display
+
+    def html_cell(self, row_index, row, **kwargs):
+        value = self.get_value(row, self.display)
+        if value is None:
+            value = '&nbsp;'
+        return mark_safe(value)
+
+
 class DateTimeWidget(BaseWidget):
-    def __init__(self, *kargs, **kwargs):
-        self.format = "%d/%m/%y %H:%M"
-
-        _kwargs = {}
-        for key, value in kwargs.items():
-            if key == 'format':
-                self.format = value
-            else:
-                _kwargs[key] = value
-
-        super(DateTimeWidget, self).__init__(*kargs, **_kwargs)
+    """
+    DateTimeWidget for table field which renders the field with localized datetime as column value
+    """
+    def __init__(self, label, format=None, **kwargs):
+        self.format = format or "%d/%m/%y %H:%M"
+        super(DateTimeWidget, self).__init__(label, **kwargs)
 
     def html_cell(self, row_index, row, **kwarg):
         value = self.get_value(row)
@@ -99,6 +113,9 @@ class DateTimeWidget(BaseWidget):
 
 
 class LocalDateTimeWidget(BaseWidget):
+    """
+    LocalDateTimeWidget for table field which renders the field with localized datetime as column value
+    """
     def html_cell(self, row_index, row, **kwargs):
         value = self.get_value(row)
         if value:
@@ -109,26 +126,21 @@ class LocalDateTimeWidget(BaseWidget):
 
 
 class HrefWidget(BaseWidget):
-    def __init__(self, *kargs, **kwargs):
-        self.href = None
-        self.reverse = None
-        self.reverse_column = ('id',)
-        my_kwargs = {}
-
-        for key, value in kwargs.items():
-            if key == 'href':
-                self.href = value
-            elif key == 'reverse':
-                self.reverse = value
-            elif key == 'reverse_column':
-                if isinstance(value, string_types):
-                    self.reverse_column = (value,)
-                else:
-                    self.reverse_column = value
-            else:
-                my_kwargs[key] = value
-
-        super(HrefWidget, self).__init__(*kargs, **my_kwargs)
+    """
+    HrefWidget for table field which renders field with href to view
+    Usage example:
+        email = widgets.HrefWidget(_('Email'), refname='email', reverse='user-retrieve', reverse_column='email')
+    """
+    def __init__(self, label, href=None, reverse=None, reverse_column=None, **kwargs):
+        self.href = href
+        self.reverse = reverse
+        if not reverse_column:
+            self.reverse_column = ('id',)
+        elif isinstance(reverse_column, string_types):
+            self.reverse_column = (reverse_column,)
+        else:
+            self.reverse_column = reverse_column
+        super(HrefWidget, self).__init__(label, **kwargs)
 
     def get_url(self, row):
         if self.reverse:
@@ -136,23 +148,23 @@ class HrefWidget(BaseWidget):
                 return reverse(self.reverse, args=[self.get_value(row, col) for col in self.reverse_column])
             except NoReverseMatch:
                 return "#NoReverseMatch"
+        return self.href
 
-    def render_url(self, href, value):
+    @staticmethod
+    def render_url(href, value):
         return mark_safe("<a href='%s'>%s</a>" % (href, value))
 
     def html_cell(self, row_index, row, **kwargs):
         href = self.get_url(row)
         value = self.get_value(row, default='&nbsp;')
-
         if href:
             return self.render_url(href, value)
-
         return value
 
 
 class ConditionHrefWidget(HrefWidget):
     """
-    HrefWidget for table field which render
+    ConditionHrefWidget for table field which renders
     field with href to view if condition lambda is True and acl result is True, otherwise the value only.
     Condition example:
     either
@@ -160,43 +172,53 @@ class ConditionHrefWidget(HrefWidget):
     or
         acl='is_access_view'
     """
-    def __init__(self, *args, **kwargs):
-        self.condition = kwargs.pop('condition', None)
-        self.acl = kwargs.pop('acl', None)
-        super(ConditionHrefWidget, self).__init__(*args, **kwargs)
+    def __init__(self, label, condition=None, acl=None, **kwargs):
+        super(ConditionHrefWidget, self).__init__(label, **kwargs)
+        self.condition = condition
+        self.acl = acl
 
     def html_cell(self, row_index, row, **kwargs):
         _request = kwargs.pop('request', None)
         is_href = True
         href = None
-
         value = self.get_value(row, default='&nbsp;')
-
         if self.condition and callable(self.condition):
             is_href &= bool(self.condition(row, _request))
-
         if self.acl and hasattr(_request, 'acl'):
             is_href &= bool(getattr(_request.acl, self.acl))
-
         if is_href:
             href = self.get_url(row)
-
         if href:
             return self.render_url(href, value)
         return mark_safe(value)
 
 
 class TemplateWidget(BaseWidget):
-    def __init__(self, *args, **kwargs):
-        self.template = kwargs.pop('template', None)
-        self.request = kwargs.pop('request', None)
-        super(TemplateWidget, self).__init__(*args, **kwargs)
+    """
+    TemplateWidget for table field which renders field using custom template
+    Usage example (django template language):
+    in the table:
+        actions = widgets.TemplateWidget(_('Actions'), template='some_instance_table_actions_field.html')
+    in template:
+        <a href="{% url 'some-instance-view' item.id %}" type="button" class="btn">
+            <em class="icon-eye"></em>
+            {% trans 'View' %}
+        </a>
+        <a href="{% url 'some-instance-edit' item.id %}" type="button" class="btn">
+            <em class="icon-edit"></em>
+            {% trans 'Edit' %}
+        </a>
+    """
+    def __init__(self, label, template=None, request=None, **kwargs):
+        self.template = template
+        self.request = request
+        super(TemplateWidget, self).__init__(label, **kwargs)
 
     def html_cell(self, row_index, row, **kwargs):
-        request = kwargs.pop('request', None)
         value = self.get_value(row, default=None)
+        _request = self.request or kwargs.pop('request', self.request)
         return mark_safe(render_to_string(self.template,
                                           {'item': row,
                                            'value': value,
                                            'index': row_index,
-                                           'request': request}))
+                                           'request': _request}))

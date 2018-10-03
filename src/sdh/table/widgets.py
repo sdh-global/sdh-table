@@ -31,6 +31,8 @@ class BaseWidget(object):
         value = None
         if hasattr(row, keylist[0]):
             value = getattr(row, keylist[0])
+            if isinstance(value, Manager):
+                return value.all()
             if callable(value):
                 value = value()
             if len(keylist) > 1:

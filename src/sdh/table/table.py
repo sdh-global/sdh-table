@@ -1,6 +1,6 @@
 from __future__ import unicode_literals
 
-from copy import deepcopy
+import copy
 import csv
 import re
 from collections import OrderedDict
@@ -12,28 +12,6 @@ from django.utils.html import strip_tags
 from . import widgets
 
 
-def get_declared_fields(bases, attrs, with_base_columns=True):
-    """
-    Create a list of form field instances from the passed in 'attrs', plus any
-    similar fields on the base classes (in 'bases'). This is used by both the
-    Form and ModelForm metclasses.
-
-    If 'with_base_fields' is True, all fields from the bases are used.
-    Otherwise, only fields in the 'declared_fields' attribute on the bases are
-    used. The distinction is useful in ModelForm subclassing.
-    Also integrates any additional media definitions
-    """
-    # FIXME: refactoring required for this method to use modern metaclass build approach
-    columns = [(column_name, obj) for column_name, obj in attrs.items() if
-               isinstance(obj, widgets.BaseWidget)]
-    columns.sort(key=lambda item: item[1].creation_counter)
-
-    for column_name, obj in columns:
-        attrs.pop(column_name)
-
-    return OrderedDict(columns)
-
-
 class DeclarativeFieldsMetaclass(type):
     """
     Metaclass that converts Field attributes to a dictionary called
@@ -41,7 +19,17 @@ class DeclarativeFieldsMetaclass(type):
     """
 
     def __new__(mcs, name, bases, attrs):
-        attrs['base_columns'] = get_declared_fields(bases, attrs)
+
+        # Collect columns from current class.
+        current_columns = []
+        for key, value in list(attrs.items()):
+            if isinstance(value, widgets.BaseWidget):
+                if not value.refname:
+                    value.refname = key
+                current_columns.append((key, value))
+                attrs.pop(key)
+        current_columns.sort(key=lambda x: x[1].creation_counter)
+        attrs['base_columns'] = OrderedDict(current_columns)
 
         attr_meta = attrs.pop('Meta', None)
 
@@ -89,15 +77,36 @@ class DeclarativeFieldsMetaclass(type):
         attrs['title'] = title
 
         new_class = super(DeclarativeFieldsMetaclass, mcs).__new__(mcs, name, bases, attrs)
+        # Walk through the MRO.
+        base_columns = OrderedDict()
+        for base in reversed(new_class.__mro__):
+            # Collect columns from base class.
+            if hasattr(base, 'base_columns'):
+                base_columns.update(base.base_columns)
+            # Columns shadowing.
+            for attr, value in base.__dict__.items():
+                if value is None and attr in base_columns:
+                    base_columns.pop(attr)
+
+        new_class.base_columns = base_columns
+        new_class.columns = base_columns
 
         return new_class
 
 
 class BaseTableView(object):
     def __init__(self, ref_id, **kwargs):
-        self.columns = deepcopy(self.base_columns)
+        self.columns = self.base_columns
         self.id = ref_id
         self.kwargs = kwargs
+
+    @property
+    def columns(self):
+        return self._columns
+
+    @columns.setter
+    def columns(self, value):
+        self._columns = copy.deepcopy(value)
 
     def get_id(self):
         return self.id

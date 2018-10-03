@@ -222,3 +222,13 @@ class TemplateWidget(BaseWidget):
                                            'value': value,
                                            'index': row_index,
                                            'request': _request}))
+
+
+class BooleanWidget(TemplateWidget):
+    """
+    BooleanWidget overrides TemplateWidget using already prepared template
+    And you can redefine widget template globally in project
+    """
+    def __init__(self, label, template=None, **kwargs):
+        template = template or 'sdh/table/widgets/boolean_widget.html'
+        super(BooleanWidget, self).__init__(label, template, **kwargs)

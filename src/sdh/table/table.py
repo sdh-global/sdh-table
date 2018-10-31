@@ -238,6 +238,13 @@ class BoundCell(object):
                                str(strip_tags(self.as_html().replace('&nbsp;', ' '))))
         return default_value
 
+    def to_python(self):
+        if hasattr(self.bound_row.controller.table, 'to_python_%s' % self.key):
+            cb = getattr(self.bound_row.controller.table, 'to_python_%s' % self.key)
+            return cb(self.bound_row.controller.table, self.row_index, self.bound_row.row,
+                      self.column.get_value(self.bound_row.row))
+        return self.column.get_value(self.bound_row.row)
+
     def html_cell_attr(self):
         return self.column.html_cell_attr()
 

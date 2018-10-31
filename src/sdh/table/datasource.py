@@ -1,3 +1,4 @@
+from django.conf import settings
 
 
 class BaseDatasource(object):
@@ -43,17 +44,22 @@ class QSDataSource(BaseDatasource):
 
     def filter(self, *kargs, **kwargs):
         self.qs = self.qs.filter(*kargs, **kwargs)
+        return self
 
+    def distinct(self, base):
+        if settings.DATABASES[self.qs.db]["ENGINE"] == "django.db.backends.oracle":
+            # distinct analogue for Oracle users
+            self.qs = base.filter(pk__in=set(self.qs.values_list('pk', flat=True)))
+        else:
+            self.qs = self.qs.distinct()
         return self
 
     def exclude(self, *kargs, **kwargs):
         self.qs = self.qs.exclude(*kargs, **kwargs)
-
         return self
         
     def extra(self, *kargs, **kwargs):
         self.qs = self.qs.extra(*kargs, **kwargs)
-
         return self
 
     def _clone(self, *args, **kwargs):

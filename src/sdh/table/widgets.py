@@ -200,3 +200,25 @@ class TemplateWidget(BaseWidget):
                                            'value': value,
                                            'index': row_index,
                                            'request': _request}))
+
+
+class BooleanWidget(TemplateWidget):
+    """
+    BooleanWidget overrides TemplateWidget using already prepared template
+    And you can redefine widget template globally in project
+    """
+    def __init__(self, label, null=False, template=None, **kwargs):
+        template = template or 'sdh/table/widgets/boolean_widget.html'
+        super(BooleanWidget, self).__init__(label, template, **kwargs)
+        self.null = null
+
+
+    def html_cell(self, row_index, row, **kwargs):
+        value = self.get_value(row, default=None)
+        _request = self.request or kwargs.pop('request', self.request)
+        return mark_safe(render_to_string(self.template,
+                                          {'item': row,
+                                           'value': value,
+                                           'index': row_index,
+                                           'allow_null': self.null,
+                                           'request': _request}))

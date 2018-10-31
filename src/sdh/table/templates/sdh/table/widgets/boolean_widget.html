@@ -1,6 +1,8 @@
 {% load i18n %}
 
-{% if value %}
+{% if value is None %}
+  <i title="{% trans 'None' %}" class="fa fa-exclamation-triangle text-warning" aria-hidden="true"></i>
+{% elif value %}
   <i title="{% trans 'Is active' %}" class="fa fa-check-circle text-success" aria-hidden="true"></i>
 {% else %}
   <i title="{% trans 'Not active' %}" class="fa fa-exclamation-circle text-warning" aria-hidden="true"></i>

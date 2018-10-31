@@ -77,28 +77,6 @@ class LabelWidget(BaseWidget):
     pass
 
 
-class DisplayWidget(BaseWidget):
-    """
-    DisplayWidget for table field which renders the field that has choices set calling get_FOO_display as column value
-    Usage example:
-        shirt_size = widgets.DisplayWidget(_('Shirt size'), refname='shirt_size')
-    """
-    def __init__(self, label, display=None, **kwargs):
-        super(DisplayWidget, self).__init__(label, **kwargs)
-        if not display and self.refname:
-            data_list = self.refname.split('__')
-            data_list[-1] = 'get_%s_display' % data_list[-1]
-            self.display = '__'.join(data_list)
-        else:
-            self.display = display
-
-    def html_cell(self, row_index, row, **kwargs):
-        value = self.get_value(row, self.display)
-        if value is None:
-            value = '&nbsp;'
-        return mark_safe(value)
-
-
 class DateTimeWidget(BaseWidget):
     """
     DateTimeWidget for table field which renders the field with localized datetime as column value
@@ -231,6 +209,17 @@ class BooleanWidget(TemplateWidget):
     BooleanWidget overrides TemplateWidget using already prepared template
     And you can redefine widget template globally in project
     """
-    def __init__(self, label, template=None, **kwargs):
+    def __init__(self, label, null=False, template=None, **kwargs):
         template = template or 'sdh/table/widgets/boolean_widget.html'
         super(BooleanWidget, self).__init__(label, template, **kwargs)
+        self.null = null
+
+    def html_cell(self, row_index, row, **kwargs):
+        value = self.get_value(row, default=None)
+        _request = self.request or kwargs.pop('request', self.request)
+        return mark_safe(render_to_string(self.template,
+                                          {'item': row,
+                                           'value': value,
+                                           'index': row_index,
+                                           'allow_null': self.null,
+                                           'request': _request}))

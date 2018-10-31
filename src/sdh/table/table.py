@@ -2,8 +2,8 @@ from __future__ import unicode_literals
 
 import re
 import csv
-import copy
 import operator
+from copy import deepcopy
 from functools import reduce
 from collections import OrderedDict
 
@@ -22,7 +22,6 @@ class DeclarativeFieldsMetaclass(type):
     """
 
     def __new__(mcs, name, bases, attrs):
-
         # Collect columns from current class.
         current_columns = []
         for key, value in list(attrs.items()):
@@ -83,19 +82,6 @@ class DeclarativeFieldsMetaclass(type):
         attrs['title'] = title
 
         new_class = super(DeclarativeFieldsMetaclass, mcs).__new__(mcs, name, bases, attrs)
-        # Walk through the MRO.
-        base_columns = OrderedDict()
-        for base in reversed(new_class.__mro__):
-            # Collect columns from base class.
-            if hasattr(base, 'base_columns'):
-                base_columns.update(base.base_columns)
-            # Columns shadowing.
-            for attr, value in base.__dict__.items():
-                if value is None and attr in base_columns:
-                    base_columns.pop(attr)
-
-        new_class.base_columns = base_columns
-        new_class.columns = base_columns
 
         return new_class
 
@@ -109,17 +95,9 @@ class BaseTableView(object):
     }
 
     def __init__(self, ref_id, **kwargs):
-        self.columns = self.base_columns
+        self.columns = deepcopy(self.base_columns)
         self.id = ref_id
         self.kwargs = kwargs
-
-    @property
-    def columns(self):
-        return self._columns
-
-    @columns.setter
-    def columns(self, value):
-        self._columns = copy.deepcopy(value)
 
     def get_id(self):
         return self.id
@@ -161,17 +139,10 @@ class BaseTableView(object):
     def apply_search(self, search_value, source):
         if not search_value:
             return
-        orm_lookups = [
-            self.construct_search(six.text_type(search_field))
-            for search_field in self.search
-        ]
+        orm_lookups = [self.construct_search(six.text_type(search_field)) for search_field in self.search]
         base = source.qs
-        queries = [
-            models.Q(**{orm_lookup: search_value})
-            for orm_lookup in orm_lookups
-        ]
+        queries = [models.Q(**{orm_lookup: search_value}) for orm_lookup in orm_lookups]
         source.filter(reduce(operator.or_, queries))
-
         if self.must_call_distinct(source.qs):
             # Filtering against a many-to-many field requires us to
             # call queryset.distinct() in order to avoid duplicate items

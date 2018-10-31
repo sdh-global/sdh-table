@@ -189,7 +189,7 @@ class CellTitle(object):
         return self.column.html_title_attr()
 
     def is_permanent(self):
-        return self.key in self.controller.table.permanent
+        return self.controller.table.permanent == '__all__' or self.key in self.controller.table.permanent
 
     def is_visible(self):
         return self.key in self.controller.visible_columns

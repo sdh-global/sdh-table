@@ -332,7 +332,7 @@ class TableController(object):
 
     def iter_columns(self):
         for key, column in self.table.columns.items():
-            if key in self.table.permanent or key in self.visible_columns:
+            if self.table.permanent == '__all__' or key in self.table.permanent or key in self.visible_columns:
                 yield (key, column)
 
     def iter_all_columns(self):

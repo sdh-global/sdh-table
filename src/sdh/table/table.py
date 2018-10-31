@@ -1,12 +1,15 @@
 from __future__ import unicode_literals
 
-import copy
-import csv
 import re
+import csv
+import copy
+import operator
+from functools import reduce
 from collections import OrderedDict
 
+from django.db import models
+from django.db.models.constants import LOOKUP_SEP
 from django.utils import six
-from django.db.models import Q
 from django.utils.html import strip_tags
 
 from . import widgets
@@ -95,6 +98,13 @@ class DeclarativeFieldsMetaclass(type):
 
 
 class BaseTableView(object):
+    lookup_prefixes = {
+        '^': 'istartswith',
+        '=': 'iexact',
+        '@': 'search',  # (Currently only supported Django's MySQL backend.)
+        '$': 'iregex',
+    }
+
     def __init__(self, ref_id, **kwargs):
         self.columns = self.base_columns
         self.id = ref_id
@@ -114,22 +124,57 @@ class BaseTableView(object):
     def get_row_class(self, controller, row):
         return ''
 
-    def apply_filter(self, filter, source):
+    def apply_filter(self, cleaned_data, source):
         pass
+
+    def construct_search(self, field_name):
+        lookup = self.lookup_prefixes.get(field_name[0])
+        if lookup:
+            field_name = field_name[1:]
+        else:
+            lookup = 'icontains'
+        return LOOKUP_SEP.join([field_name, lookup])
+
+    def must_call_distinct(self, queryset):
+        """
+        Return True if 'distinct()' should be used to query the given lookups.
+        """
+        for search_field in self.search:
+            opts = queryset.model._meta
+            if search_field[0] in self.lookup_prefixes:
+                search_field = search_field[1:]
+            parts = search_field.split(LOOKUP_SEP)
+            for part in parts:
+                field = opts.get_field(part)
+                if hasattr(field, 'get_path_info'):
+                    # This field is a relation, update opts to follow the relation
+                    path_info = field.get_path_info()
+                    opts = path_info[-1].to_opts
+                    if any(path.m2m for path in path_info):
+                        # This field is a m2m relation so we know we need to call distinct
+                        return True
+        return False
 
     def apply_search(self, search_value, source):
         if not search_value:
             return
-        search_filter = []
-        for orm_field_name in self.search:
-            filter_name = "%s__icontains" % orm_field_name
-            search_filter.append(Q(**{filter_name: search_value}))
+        orm_lookups = [
+            self.construct_search(six.text_type(search_field))
+            for search_field in self.search
+        ]
+        base = source.qs
+        queries = [
+            models.Q(**{orm_lookup: search_value})
+            for orm_lookup in orm_lookups
+        ]
+        source.filter(reduce(operator.or_, queries))
 
-        if search_filter:
-            result_q = Q()
-            for item in search_filter:
-                result_q.add(item, Q.OR)
-            source.filter(result_q)
+        if self.must_call_distinct(source.qs):
+            # Filtering against a many-to-many field requires us to
+            # call queryset.distinct() in order to avoid duplicate items
+            # in the resulting queryset.
+            # We try to avoid this if possible, for performance reasons.
+            source.distinct(base)
 
 
 class CellTitle(object):

@@ -37,6 +37,7 @@ class DeclarativeFieldsMetaclass(type):
         attr_meta = attrs.pop('Meta', None)
 
         permanent = ()
+        default_visible = ()
         sortable = ()
         filter_form = None
         search = ()
@@ -52,6 +53,7 @@ class DeclarativeFieldsMetaclass(type):
 
         if attr_meta:
             permanent = getattr(attr_meta, 'permanent', ())
+            default_visible = getattr(attr_meta, 'default_visible', ())
             sortable = getattr(attr_meta, 'sortable', ())
             filter_form = getattr(attr_meta, 'filter_form', None)
             search = getattr(attr_meta, 'search', None)
@@ -66,6 +68,7 @@ class DeclarativeFieldsMetaclass(type):
             csv_dialect = getattr(attr_meta, 'csv_dialect', csv.excel)
 
         attrs['permanent'] = permanent
+        attrs['default_visible'] = default_visible
         attrs['sortable'] = sortable
         attrs['filter_form'] = filter_form
         attrs['search'] = search
@@ -267,7 +270,6 @@ class BoundRow(object):
 
     def get_id(self):
         table_id = self.controller.table.get_id() or 'table'
-
         return "%s_row_%d" % (table_id, self.row_index)
 
     def get_row_class(self):

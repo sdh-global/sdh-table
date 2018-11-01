@@ -33,7 +33,7 @@ class TableController(object):
         self.last_profile_key = "%s__last" % self.session_key
         self.source = datasource
         self.paginator = None
-        self.visible_columns = []
+        self.visible_columns = self.table.default_visible
         self.sort_by = []
         self.sort_asc = True
         self.filter = {}
@@ -113,11 +113,11 @@ class TableController(object):
             mode = ''
         else:
             mode = '-'
-            
+
         return "%s%s" % (mode, self.sort_by)
 
     def apply_state(self, state):
-        self.visible_columns = state.get('visible', [])
+        self.visible_columns = state.get('visible', self.table.default_visible)
         self.sort_by = state.get('sort_by')
         self.filter = state.get('filter', {}) or {}  # due some old profile save default as list
         if self.sort_by:
@@ -161,7 +161,7 @@ class TableController(object):
 
         if self.profile:
             state = self.profile.state
-        
+
         if state:
             self.apply_state(state)
 
@@ -174,14 +174,15 @@ class TableController(object):
         state = self.get_state()
         dump = TableViewProfile.dump_state(state)
 
-        kwargs = {'tableview_name': self.table.id,
-                  'defaults': {'dump': dump},
-                  }
+        kwargs = {
+            'tableview_name': self.table.id,
+            'defaults': {'dump': dump},
+        }
         if self.table.global_profile:
             kwargs['user__isnull'] = True
         else:
             kwargs['user'] = self.request.user
-            
+
         if name is None:
             kwargs['is_default'] = True
         else:
@@ -189,7 +190,7 @@ class TableController(object):
             kwargs['label'] = name
 
         profile, created = TableViewProfile.objects.get_or_create(**kwargs)
-            
+
         if not created:
             profile.dump = dump
             profile.save()
@@ -352,7 +353,7 @@ class TableController(object):
             self.table.apply_search(self.search_value, self.source)
         else:
             self.table.apply_filter(self.filter, self.source)
-        
+
         if self.paginator:
             self.paginator.calc()
 

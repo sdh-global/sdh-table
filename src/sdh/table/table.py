@@ -15,28 +15,6 @@ from django.utils.html import strip_tags
 from . import widgets
 
 
-def get_declared_fields(bases, attrs, with_base_columns=True):
-    """
-    Create a list of form field instances from the passed in 'attrs', plus any
-    similar fields on the base classes (in 'bases'). This is used by both the
-    Form and ModelForm metclasses.
-
-    If 'with_base_fields' is True, all fields from the bases are used.
-    Otherwise, only fields in the 'declared_fields' attribute on the bases are
-    used. The distinction is useful in ModelForm subclassing.
-    Also integrates any additional media definitions
-    """
-    # FIXME: refactoring required for this method to use modern metaclass build approach
-    columns = [(column_name, obj) for column_name, obj in attrs.items() if
-               isinstance(obj, widgets.BaseWidget)]
-    columns.sort(key=lambda item: item[1].creation_counter)
-
-    for column_name, obj in columns:
-        attrs.pop(column_name)
-
-    return OrderedDict(columns)
-
-
 class DeclarativeFieldsMetaclass(type):
     """
     Metaclass that converts Field attributes to a dictionary called
@@ -44,11 +22,21 @@ class DeclarativeFieldsMetaclass(type):
     """
 
     def __new__(mcs, name, bases, attrs):
-        attrs['base_columns'] = get_declared_fields(bases, attrs)
+        # Collect columns from current class.
+        current_columns = []
+        for key, value in list(attrs.items()):
+            if isinstance(value, widgets.BaseWidget):
+                if not value.refname:
+                    value.refname = key
+                current_columns.append((key, value))
+                attrs.pop(key)
+        current_columns.sort(key=lambda x: x[1].creation_counter)
+        attrs['base_columns'] = OrderedDict(current_columns)
 
         attr_meta = attrs.pop('Meta', None)
 
         permanent = ()
+        default_visible = ()
         sortable = ()
         filter_form = None
         search = ()
@@ -64,6 +52,7 @@ class DeclarativeFieldsMetaclass(type):
 
         if attr_meta:
             permanent = getattr(attr_meta, 'permanent', ())
+            default_visible = getattr(attr_meta, 'default_visible', ())
             sortable = getattr(attr_meta, 'sortable', ())
             filter_form = getattr(attr_meta, 'filter_form', None)
             search = getattr(attr_meta, 'search', None)
@@ -78,6 +67,7 @@ class DeclarativeFieldsMetaclass(type):
             csv_dialect = getattr(attr_meta, 'csv_dialect', csv.excel)
 
         attrs['permanent'] = permanent
+        attrs['default_visible'] = default_visible
         attrs['sortable'] = sortable
         attrs['filter_form'] = filter_form
         attrs['search'] = search
@@ -149,16 +139,10 @@ class BaseTableView(object):
     def apply_search(self, search_value, source):
         if not search_value:
             return
-        orm_lookups = [
-            self.construct_search(six.text_type(search_field)) for search_field in self.search
-        ]
+        orm_lookups = [self.construct_search(six.text_type(search_field)) for search_field in self.search]
         base = source.qs
-        queries = [
-            models.Q(**{orm_lookup: search_value})
-            for orm_lookup in orm_lookups
-        ]
+        queries = [models.Q(**{orm_lookup: search_value}) for orm_lookup in orm_lookups]
         source.filter(reduce(operator.or_, queries))
-
         if self.must_call_distinct(source.qs):
             # Filtering against a many-to-many field requires us to
             # call queryset.distinct() in order to avoid duplicate items
@@ -264,7 +248,6 @@ class BoundRow(object):
 
     def get_id(self):
         table_id = self.controller.table.get_id() or 'table'
-
         return "%s_row_%d" % (table_id, self.row_index)
 
     def get_row_class(self):

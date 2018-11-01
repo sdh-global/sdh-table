@@ -31,7 +31,9 @@ class BaseWidget(object):
         value = None
         if hasattr(row, keylist[0]):
             value = getattr(row, keylist[0])
-            if callable(value) and not isinstance(value, Manager):
+            if isinstance(value, Manager):
+                return value
+            if callable(value):
                 value = value()
             if len(keylist) > 1:
                 return self._recursive_value(value, keylist[1:])
@@ -211,7 +213,6 @@ class BooleanWidget(TemplateWidget):
         template = template or 'sdh/table/widgets/boolean_widget.html'
         super(BooleanWidget, self).__init__(label, template, **kwargs)
         self.null = null
-
 
     def html_cell(self, row_index, row, **kwargs):
         value = self.get_value(row, default=None)

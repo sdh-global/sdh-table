@@ -112,11 +112,11 @@ class BaseTableView(object):
 
     @property
     def get_permanent(self):
-        return self.columns.keys() if self.permanent == ALL_FIELDS else self.permanent
+        return tuple(self.columns.keys()) if self.permanent == ALL_FIELDS else self.permanent
 
     @property
     def get_default_visible(self):
-        return self.columns.keys() if self.default_visible == ALL_FIELDS else self.default_visible
+        return tuple(self.columns.keys()) if self.default_visible == ALL_FIELDS else self.default_visible
 
     def apply_filter(self, cleaned_data, source):
         """

@@ -14,6 +14,8 @@ from django.utils.html import strip_tags
 
 from . import widgets
 
+ALL_FIELDS = '__all__'
+
 
 class DeclarativeFieldsMetaclass(type):
     """
@@ -103,9 +105,28 @@ class BaseTableView(object):
         return self.id
 
     def get_row_class(self, controller, row):
+        """
+        Dummy for further specifying a custom class for each row.
+        """
         return ''
 
+    @property
+    def get_permanent(self):
+        return self.columns.keys() if self.permanent == ALL_FIELDS else self.permanent
+
+    @property
+    def get_default_visible(self):
+        return self.columns.keys() if self.default_visible == ALL_FIELDS else self.default_visible
+
     def apply_filter(self, cleaned_data, source):
+        """
+        A function that filter results from 'source' using 'cleaned_data' from 'filter_form'.
+        Usage example:
+            def apply_filter(self, cleaned_data, source):
+                archived_only = cleaned_data.get('archived_only')
+                if archived_only:
+                    qs.filter(archived=True)
+        """
         pass
 
     def construct_search(self, field_name):
@@ -173,7 +194,7 @@ class CellTitle(object):
         return self.column.html_title_attr()
 
     def is_permanent(self):
-        return self.controller.table.permanent == '__all__' or self.key in self.controller.table.permanent
+        return self.key in self.controller.table.get_permanent
 
     def is_visible(self):
         return self.key in self.controller.visible_columns
@@ -221,13 +242,6 @@ class BoundCell(object):
                                ' ',
                                str(strip_tags(self.as_html().replace('&nbsp;', ' '))))
         return default_value
-
-    def to_python(self):
-        if hasattr(self.bound_row.controller.table, 'to_python_%s' % self.key):
-            cb = getattr(self.bound_row.controller.table, 'to_python_%s' % self.key)
-            return cb(self.bound_row.controller.table, self.row_index, self.bound_row.row,
-                      self.column.get_value(self.bound_row.row))
-        return self.column.get_value(self.bound_row.row)
 
     def html_cell_attr(self):
         return self.column.html_cell_attr()

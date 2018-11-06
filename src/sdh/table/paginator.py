@@ -54,13 +54,13 @@ class Paginator(object):
     """
 
     def __init__(self, queryset, page=None, row_per_page=None, request=None, 
-                 skip_startup_recalc=False):
+                 skip_startup_recalc=False, segment=None):
         self._queryset = queryset
         self.request = request
         self._pages = None
-        self.segment = None
+        self.segment = segment or 5
         self._page = None
-        self.row_per_page = row_per_page
+        self.row_per_page = row_per_page or settings.PAGINATOR_PER_PAGE
         self._hits = 0
 
         if page is not None or request is not None and self.row_per_page != 'all':
@@ -72,21 +72,17 @@ class Paginator(object):
             page = self.request.GET['page']
         self._page = atoi(page, 1)
 
-        self.row_per_page = self.row_per_page or settings.PAGINATOR_PER_PAGE
-
         if isinstance(self._queryset, list):
             self._hits = len(self._queryset)
         else:
             self._hits = int(self._queryset.count())
 
-        self._pages = int(math.ceil(float(self._hits)/float(self.row_per_page)))
+        self._pages = int(math.ceil(float(self._hits) / float(self.row_per_page)))
         if not self._pages:
             self._pages = 1
 
         if self._page < 1 or self._page > self._pages:
             raise Http404
-
-        self.segment = 5
 
     @property
     def page(self):
@@ -118,7 +114,7 @@ class Paginator(object):
         return self._hits
 
     def get_offset(self):
-        start = (self.page - 1) * atoi(self.row_per_page)
+        start = (self.page - 1) * atoi(self.row_per_page, 1)
         end = self.page * atoi(self.row_per_page)
         return start, end
 
@@ -132,9 +128,8 @@ class Paginator(object):
 
     def get_bar(self):
         """ Return list of page numbers for current segment """
-
         bar = []
-        for page in range(self.page-self.segment, self.page+self.segment+1):
+        for page in range(self.page-self.segment, self.page + self.segment + 1):
             if page <= 0 or page > self.get_page_count():
                 continue
 
@@ -154,9 +149,9 @@ class Paginator(object):
         return self.page + 1
 
     def get_prev_page_group(self):
-        if self.page - self.segment*2 - 1 <= 0:
+        if self.page - self.segment * 2 - 1 <= 0:
             return None
-        return self.page - self.segment*2 - 1
+        return self.page - self.segment * 2 - 1
 
     def get_prev_page_segment(self):
         if self.page - self.segment - 1 <= 0:
@@ -164,9 +159,9 @@ class Paginator(object):
         return self.page - self.segment - 1
 
     def get_next_page_group(self):
-        if self.page + self.segment*2 + 1 > self.get_page_count():
+        if self.page + self.segment * 2 + 1 > self.get_page_count():
             return None
-        return self.page + self.segment*2 + 1
+        return self.page + self.segment * 2 + 1
 
     def get_next_page_segment(self):
         if self.page + self.segment + 1 > self.get_page_count():
@@ -180,12 +175,12 @@ class Paginator(object):
         return self.row_per_page != 'all' and self.get_page_count() > 1
 
     def set_page_by_position(self, position):
-        self.page = int((position-1)/self.row_per_page)+1
+        self.page = int((position - 1) / self.row_per_page) + 1
 
     def set_inverted_page_by_position(self, position):
         """ set inverted paginator page
 
-         Exampte: inverted paginator for 33 items:
+         Example: inverted paginator for 33 items:
 
          page4: 33..24
          page3: 23..14
@@ -195,9 +190,59 @@ class Paginator(object):
         """
         page = None
         i = self.get_rows_count() + 1
-        for p in range(1, self.get_page_count()+1):  # [1,2,3,4]
+        for p in range(1, self.get_page_count() + 1):  # [1,2,3,4]
             i -= self.row_per_page
             if i <= position:
                 page = p
                 break
         self.page = page
+
+
+class LazyPaginator(Paginator):
+
+    def __init__(self, queryset, page=None, row_per_page=None, request=None,
+                 skip_startup_recalc=False, segment=None):
+        super(LazyPaginator, self).__init__(queryset, page, row_per_page, request,
+                                            skip_startup_recalc, segment)
+        self._last_page = None
+
+    @property
+    def last_page(self):
+        return self._last_page
+
+    @last_page.setter
+    def last_page(self, value):
+        self._last_page = value
+        self._pages = value
+
+    def calc(self, page=None):
+        if self.request and 'page' in self.request.GET and page is None:
+            page = self.request.GET['page']
+        self._page = atoi(page, 1)
+
+        if not self._pages:
+            start, end = self.get_offset()
+            if self._queryset:
+                next_page_exists = bool(self._queryset[end:end + 1])
+                if next_page_exists:
+                    self.set_page_count(self._page + next_page_exists)
+                else:
+                    self.last_page = self._page
+
+        if self._page < 1:
+            raise Http404
+
+    def get_bar(self):
+        """ Return list of page numbers for current segment """
+        bar = []
+        for page in range(self.page - self.segment, self.page + self.segment + 1):
+            if page <= 0 or self.last_page and page > self.last_page:
+                continue
+            bar.append(page)
+        return bar
+
+    def set_page_count(self, value):
+        self._pages = value
+
+    def is_paginate(self):
+        return True

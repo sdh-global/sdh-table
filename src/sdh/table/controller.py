@@ -29,7 +29,7 @@ class TableController(object):
         self.session_key = "tableview_%s" % self.table.id
         self.last_profile_key = "%s__last" % self.session_key
         self.source = datasource
-        self.paginator_class = paginator_class or Paginator
+        self.paginator_class = paginator_class or self.table.paginator_class or Paginator
         self.paginator = None
         self.visible_columns = self.table.get_default_visible
         self.sort_by = []
@@ -63,13 +63,13 @@ class TableController(object):
         return True
 
     def get_paginated_rows(self):
-        _qs = self.source._clone()
-
         if self.paginator:
-            _qs = _qs[slice(*self.paginator.get_offset())]
+            row_iterator = self.paginator.get_items()
+        else:
+            row_iterator = self.source._clone()
 
         row_index = 0
-        for row in _qs:
+        for row in row_iterator:
             row_index += 1
             yield BoundRow(self, row_index, row)
 
@@ -215,11 +215,8 @@ class TableController(object):
     def is_filter_active(self):
         return any(self.get_state()['filter'].values())
 
-    def process_request(self, skip_paginator=False):
+    def process_request(self, **kwargs):
         self.restore(self.request.GET.get('profile'))
-
-        if 'page' in self.request.GET and not skip_paginator:
-            self.set_page(self.request.GET.get('page'))
 
         if self.request.is_ajax():
             if self.request.GET.get('action') == 'save_state':
@@ -246,7 +243,6 @@ class TableController(object):
                     # Backward compatibility
                     self.source = qs
 
-                self._init_paginator(self.request.GET.get('page', 1))
                 return JsonResponse(
                     {'page_count': self.paginator.get_page_count(),
                      'body': render_to_string(self.table.template_body_content,

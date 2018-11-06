@@ -44,6 +44,7 @@ class DeclarativeFieldsMetaclass(type):
         search = ()
         use_keyboard = False
         global_profile = False
+        paginator_class = None
         template = "sdh/table/table_body.html"
         template_body_content = "sdh/table/table_body_content.html"
         template_paginator = "sdh/table/table_paginator.html"
@@ -61,6 +62,7 @@ class DeclarativeFieldsMetaclass(type):
             use_keyboard = getattr(attr_meta, 'use_keyboard', False)
             reload_interval = getattr(attr_meta, 'reload_interval', None)
             global_profile = getattr(attr_meta, 'global_profile', False)
+            paginator_class = getattr(attr_meta, 'paginator_class', None)
             template = getattr(attr_meta, 'template', template)
             template_body_content = getattr(attr_meta, 'template_body_content', template_body_content)
             template_paginator = getattr(attr_meta, 'template_paginator', template_paginator)
@@ -75,6 +77,7 @@ class DeclarativeFieldsMetaclass(type):
         attrs['search'] = search
         attrs['use_keyboard'] = use_keyboard
         attrs['global_profile'] = global_profile
+        attrs['paginator_class'] = paginator_class
         attrs['template'] = template
         attrs['template_body_content'] = template_body_content
         attrs['template_paginator'] = template_paginator

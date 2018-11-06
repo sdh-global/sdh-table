@@ -204,6 +204,7 @@ class LazyPaginator(Paginator):
         super(LazyPaginator, self).__init__(queryset, page, row_per_page, request,
                                             skip_startup_recalc, segment)
         self._last_page = None
+        self._rows = []
 
     def get_next_page_group(self):
         if self.last_page and self.page + self.segment * 2 + 1 > self.last_page:
@@ -219,6 +220,15 @@ class LazyPaginator(Paginator):
         self._last_page = value
         self._pages = value
 
+    def get_items(self):
+        if len(self._rows) > self.row_per_page:
+            return self._rows[0:self.row_per_page]
+        return self._rows
+
+    def _fetch_rows(self):
+        start, end = self.get_offset()
+        self._rows = list(self._queryset[start:end + 1])
+
     def calc(self, page=None):
         if self.request and 'page' in self.request.GET and page is None:
             page = self.request.GET['page']
@@ -228,14 +238,15 @@ class LazyPaginator(Paginator):
         else:
             self._page = _page
 
+        self._fetch_rows()
+
         if not self._pages:
-            start, end = self.get_offset()
-            if self._queryset:
-                next_page_exists = self._queryset[end:end + 1].exists()
-                if next_page_exists:
-                    self.set_page_count(self._page + next_page_exists)
-                else:
-                    self._page = self.last_page = self._queryset.count() // self.row_per_page + 1
+            if len(self._rows) > self.row_per_page:
+                self.set_page_count(self._page + 1)
+            else:
+                # force re-fetch last page rows
+                self._page = self.last_page = self._queryset.count() // self.row_per_page + 1
+                self._fetch_rows()
 
         if self._page < 1:
             raise Http404

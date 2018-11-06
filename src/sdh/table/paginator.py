@@ -5,7 +5,6 @@ from django.http import Http404
 
 from .shortcuts import atoi
 
-
 """
 Typical template example
 ===========================
@@ -53,7 +52,7 @@ class Paginator(object):
         will look for ``ROW_PER_PAGE`` in project settings file.
     """
 
-    def __init__(self, queryset, page=None, row_per_page=None, request=None, 
+    def __init__(self, queryset, page=None, row_per_page=None, request=None,
                  skip_startup_recalc=False, segment=None):
         self._queryset = queryset
         self.request = request
@@ -129,7 +128,7 @@ class Paginator(object):
     def get_bar(self):
         """ Return list of page numbers for current segment """
         bar = []
-        for page in range(self.page-self.segment, self.page + self.segment + 1):
+        for page in range(self.page - self.segment, self.page + self.segment + 1):
             if page <= 0 or page > self.get_page_count():
                 continue
 
@@ -255,3 +254,25 @@ class LazyPaginator(Paginator):
 
     def is_paginate(self):
         return True
+
+
+class LazySegmentPaginator(Paginator):
+
+    def calc(self, page=None):
+        if self.request and 'page' in self.request.GET and page is None:
+            page = self.request.GET['page']
+        self._page = atoi(page, 1)
+
+        _hits = self._queryset[(self._page - 1) * self.row_per_page:
+                               self._page * self.row_per_page + self.segment * self.row_per_page].count()
+        if _hits:
+            self._pages = self._page + _hits // self.row_per_page
+
+        if not self._pages:
+            self._pages = 1
+
+        if self._page < 1 or self._page > self._pages:
+            raise Http404
+
+    def set_inverted_page_by_position(self, position):
+        pass

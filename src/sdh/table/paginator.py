@@ -206,6 +206,11 @@ class LazyPaginator(Paginator):
                                             skip_startup_recalc, segment)
         self._last_page = None
 
+    def get_next_page_group(self):
+        if self.last_page and self.page + self.segment * 2 + 1 > self.last_page:
+            return None
+        return self.page + self.segment * 2 + 1
+
     @property
     def last_page(self):
         return self._last_page
@@ -218,16 +223,20 @@ class LazyPaginator(Paginator):
     def calc(self, page=None):
         if self.request and 'page' in self.request.GET and page is None:
             page = self.request.GET['page']
-        self._page = atoi(page, 1)
+        _page = atoi(page, 1)
+        if self.last_page and _page > self.last_page:
+            self._page = self.last_page
+        else:
+            self._page = _page
 
         if not self._pages:
             start, end = self.get_offset()
             if self._queryset:
-                next_page_exists = bool(self._queryset[end:end + 1])
+                next_page_exists = self._queryset[end:end + 1].exists()
                 if next_page_exists:
                     self.set_page_count(self._page + next_page_exists)
                 else:
-                    self.last_page = self._page
+                    self._page = self.last_page = self._queryset.count() // self.row_per_page + 1
 
         if self._page < 1:
             raise Http404

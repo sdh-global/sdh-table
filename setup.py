@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-version = '0.5.0'
+version = '1.0.0'
 
 setup(
     name='sdh.table',
@@ -19,7 +19,7 @@ setup(
     install_requires=['Django>=1.8', ],
     zip_safe=False,
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
         'Framework :: Django',
         'Intended Audience :: Developers',

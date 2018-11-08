@@ -27,16 +27,7 @@ class QSDataSource(BaseDatasource):
     def __getitem__(self, item):
         if isinstance(item, slice):
             qs = self._clone()
-            if item.start is not None:
-                start = int(item.start)
-            else:
-                start = None
-            if item.stop is not None:
-                stop = int(item.stop)
-            else:
-                stop = None
-            qs.query.set_limits(start, stop)
-            return list(qs)[::item.step] if item.step else qs
+            return qs[item]
 
     def __item__(self, key):
         pass

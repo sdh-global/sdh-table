@@ -24,6 +24,11 @@ class QSDataSource(BaseDatasource):
     def __iter__(self):
         return iter(self.qs)
 
+    def __getitem__(self, item):
+        if isinstance(item, slice):
+            qs = self._clone()
+            return qs[item]
+
     def __item__(self, key):
         pass
 

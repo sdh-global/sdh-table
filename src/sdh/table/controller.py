@@ -3,9 +3,7 @@ from __future__ import unicode_literals
 import json
 import csv
 from datetime import datetime
-
 from django.http import HttpResponseRedirect, HttpResponse
-
 try:
     from django.http import JsonResponse
 except ImportError:
@@ -16,7 +14,6 @@ except ImportError:
             data = json.dumps(data, **dumps_params)
             super(JsonResponse, self).__init__(content=data, **kwargs)
 
-
 from .table import CellTitle, BoundRow
 from .shortcuts import get_object_or_none, fn_value, render_to_string
 from .paginator import Paginator
@@ -24,7 +21,7 @@ from .datasource import BaseDatasource
 
 
 class TableController(object):
-    def __init__(self, table, datasource, request, row_per_page=None, render_dict=None):
+    def __init__(self, table, datasource, request, row_per_page=None, render_dict=None, paginator_class=None):
         self.table = table
         self.request = request
         self.profile = None
@@ -32,8 +29,9 @@ class TableController(object):
         self.session_key = "tableview_%s" % self.table.id
         self.last_profile_key = "%s__last" % self.session_key
         self.source = datasource
+        self.paginator_class = paginator_class or self.table.paginator_class or Paginator
         self.paginator = None
-        self.visible_columns = self.table.default_visible
+        self.visible_columns = self.table.get_default_visible
         self.sort_by = []
         self.sort_asc = True
         self.filter = {}
@@ -48,11 +46,11 @@ class TableController(object):
             self._init_paginator()
 
     def _init_paginator(self, page=1):
-        self.paginator = Paginator(self.source,
-                                   page=page,
-                                   row_per_page=self.row_per_page,
-                                   request=self.request,
-                                   skip_startup_recalc=True)
+        self.paginator = self.paginator_class(self.source,
+                                              page=page,
+                                              row_per_page=self.row_per_page,
+                                              request=self.request,
+                                              skip_startup_recalc=True)
 
     def show_column(self, column_name):
         if column_name not in self.table.columns:
@@ -65,19 +63,19 @@ class TableController(object):
         return True
 
     def get_paginated_rows(self):
-        _qs = self.source._clone()
-
         if self.paginator:
-            _qs = _qs[slice(*self.paginator.get_offset())]
+            row_iterator = self.paginator.get_items()
+        else:
+            row_iterator = self.source._clone()
 
         row_index = 0
-        for row in _qs:
+        for row in row_iterator:
             row_index += 1
             yield BoundRow(self, row_index, row)
 
-    def set_page(self, page):
+    def set_page(self, page_number):
         if self.paginator:
-            self.paginator.page = page
+            self.paginator.page = page_number
 
     def set_sort(self, column_name):
         asc = True
@@ -101,9 +99,7 @@ class TableController(object):
                         self.source = self.source.order_by(column.refname)
                     else:
                         self.source = self.source.order_by('-%s' % column.refname)
-
             return True
-
         return False
 
     def get_sort(self):
@@ -117,16 +113,18 @@ class TableController(object):
         return "%s%s" % (mode, self.sort_by)
 
     def apply_state(self, state):
-        self.visible_columns = state.get('visible', self.table.default_visible)
+        self.visible_columns = state.get('visible', self.table.get_default_visible)
         self.sort_by = state.get('sort_by')
         self.filter = state.get('filter', {}) or {}  # due some old profile save default as list
         if self.sort_by:
             self.set_sort(self.sort_by)
 
     def get_state(self):
-        return {'visible': self.visible_columns,
-                'sort_by': self.get_sort(),
-                'filter': self.filter}
+        return {
+            'visible': self.visible_columns,
+            'sort_by': self.get_sort(),
+            'filter': self.filter
+        }
 
     def apply_search(self, value):
         self.search_value = value
@@ -217,11 +215,8 @@ class TableController(object):
     def is_filter_active(self):
         return any(self.get_state()['filter'].values())
 
-    def process_request(self, skip_paginator=False):
+    def process_request(self, **kwargs):
         self.restore(self.request.GET.get('profile'))
-
-        if 'page' in self.request.GET and not skip_paginator:
-            self.set_page(self.request.GET.get('page'))
 
         if self.request.is_ajax():
             if self.request.GET.get('action') == 'save_state':
@@ -248,16 +243,14 @@ class TableController(object):
                     # Backward compatibility
                     self.source = qs
 
-                self._init_paginator(self.request.GET.get('page', 1))
-                return JsonResponse({'page_count': self.paginator.get_page_count(),
-                                     'body': render_to_string(self.table.template_body_content,
-                                                              {'table': self.table,
-                                                               'controller': self},
-                                                              self.request),
-                                     'paginator': render_to_string(self.table.template_paginator,
-                                                                   {'table': self.table,
-                                                                    'controller': self},
-                                                                   self.request)})
+                return JsonResponse(
+                    {'page_count': self.paginator.get_page_count(),
+                     'body': render_to_string(self.table.template_body_content,
+                                              {'table': self.table, 'controller': self},
+                                              self.request),
+                     'paginator': render_to_string(self.table.template_paginator,
+                                                   {'table': self.table, 'controller': self},
+                                                   self.request)})
 
         if 'search' in self.request.GET:
             self.apply_search(self.request.GET['search'])
@@ -333,7 +326,7 @@ class TableController(object):
 
     def iter_columns(self):
         for key, column in self.table.columns.items():
-            if self.table.permanent == '__all__' or key in self.table.permanent or key in self.visible_columns:
+            if key in self.table.get_permanent or key in self.visible_columns:
                 yield (key, column)
 
     def iter_all_columns(self):
@@ -357,9 +350,10 @@ class TableController(object):
         if self.paginator:
             self.paginator.calc()
 
-        kwargs = {'table': self.table,
-                  'filter_form': self.form_filter_instance,
-                  'controller': self,
-                  }
+        kwargs = {
+            'table': self.table,
+            'filter_form': self.form_filter_instance,
+            'controller': self,
+        }
         kwargs.update(**self.render_dict)
         return render_to_string(self.table.template, kwargs, self.request)

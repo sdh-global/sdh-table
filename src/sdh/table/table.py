@@ -14,6 +14,8 @@ from django.utils.html import strip_tags
 
 from . import widgets
 
+ALL_FIELDS = '__all__'
+
 
 class DeclarativeFieldsMetaclass(type):
     """
@@ -35,51 +37,23 @@ class DeclarativeFieldsMetaclass(type):
 
         attr_meta = attrs.pop('Meta', None)
 
-        permanent = ()
-        default_visible = ()
-        sortable = ()
-        filter_form = None
-        search = ()
-        use_keyboard = False
-        global_profile = False
-        template = "sdh/table/table_body.html"
-        template_body_content = "sdh/table/table_body_content.html"
-        template_paginator = "sdh/table/table_paginator.html"
-        reload_interval = None
-        csv_allow = False
-        csv_dialect = csv.excel
-        title = None
-
-        if attr_meta:
-            permanent = getattr(attr_meta, 'permanent', ())
-            default_visible = getattr(attr_meta, 'default_visible', ())
-            sortable = getattr(attr_meta, 'sortable', ())
-            filter_form = getattr(attr_meta, 'filter_form', None)
-            search = getattr(attr_meta, 'search', None)
-            use_keyboard = getattr(attr_meta, 'use_keyboard', False)
-            reload_interval = getattr(attr_meta, 'reload_interval', None)
-            global_profile = getattr(attr_meta, 'global_profile', False)
-            template = getattr(attr_meta, 'template', template)
-            template_body_content = getattr(attr_meta, 'template_body_content', template_body_content)
-            template_paginator = getattr(attr_meta, 'template_paginator', template_paginator)
-            csv_allow = getattr(attr_meta, 'csv_allow', False)
-            title = getattr(attr_meta, 'title', None)
-            csv_dialect = getattr(attr_meta, 'csv_dialect', csv.excel)
-
-        attrs['permanent'] = permanent
-        attrs['default_visible'] = default_visible
-        attrs['sortable'] = sortable
-        attrs['filter_form'] = filter_form
-        attrs['search'] = search
-        attrs['use_keyboard'] = use_keyboard
-        attrs['global_profile'] = global_profile
-        attrs['template'] = template
-        attrs['template_body_content'] = template_body_content
-        attrs['template_paginator'] = template_paginator
-        attrs['reload_interval'] = reload_interval
-        attrs['csv_allow'] = csv_allow
-        attrs['csv_dialect'] = csv_dialect
-        attrs['title'] = title
+        attrs['permanent'] = getattr(attr_meta, 'permanent', ())
+        attrs['default_visible'] = getattr(attr_meta, 'default_visible', ())
+        attrs['sortable'] = getattr(attr_meta, 'sortable', ())
+        attrs['filter_form'] = getattr(attr_meta, 'filter_form', None)
+        attrs['search'] = getattr(attr_meta, 'search', None)
+        attrs['use_keyboard'] = getattr(attr_meta, 'use_keyboard', False)
+        attrs['reload_interval'] = getattr(attr_meta, 'reload_interval', None)
+        attrs['global_profile'] = getattr(attr_meta, 'global_profile', False)
+        attrs['paginator_class'] = getattr(attr_meta, 'paginator_class', None)
+        attrs['template'] = getattr(attr_meta, 'template', 'sdh/table/table_body.html')
+        attrs['template_body_content'] = getattr(attr_meta,
+                                                 'template_body_content',
+                                                 'sdh/table/table_body_content.html')
+        attrs['template_paginator'] = getattr(attr_meta, 'template_paginator', 'sdh/table/table_paginator.html')
+        attrs['csv_allow'] = getattr(attr_meta, 'csv_allow', False)
+        attrs['csv_dialect'] = getattr(attr_meta, 'csv_dialect', csv.excel)
+        attrs['title'] = getattr(attr_meta, 'title', None)
 
         new_class = super(DeclarativeFieldsMetaclass, mcs).__new__(mcs, name, bases, attrs)
 
@@ -103,9 +77,28 @@ class BaseTableView(object):
         return self.id
 
     def get_row_class(self, controller, row):
+        """
+        Dummy for further specifying a custom class for each row.
+        """
         return ''
 
+    @property
+    def get_permanent(self):
+        return tuple(self.columns.keys()) if self.permanent == ALL_FIELDS else self.permanent
+
+    @property
+    def get_default_visible(self):
+        return tuple(self.columns.keys()) if self.default_visible == ALL_FIELDS else self.default_visible
+
     def apply_filter(self, cleaned_data, source):
+        """
+        A function that filter results from 'source' using 'cleaned_data' from 'filter_form'.
+        Usage example:
+            def apply_filter(self, cleaned_data, source):
+                archived_only = cleaned_data.get('archived_only')
+                if archived_only:
+                    qs.filter(archived=True)
+        """
         pass
 
     def construct_search(self, field_name):
@@ -173,7 +166,7 @@ class CellTitle(object):
         return self.column.html_title_attr()
 
     def is_permanent(self):
-        return self.controller.table.permanent == '__all__' or self.key in self.controller.table.permanent
+        return self.key in self.controller.table.get_permanent
 
     def is_visible(self):
         return self.key in self.controller.visible_columns
@@ -221,13 +214,6 @@ class BoundCell(object):
                                ' ',
                                str(strip_tags(self.as_html().replace('&nbsp;', ' '))))
         return default_value
-
-    def to_python(self):
-        if hasattr(self.bound_row.controller.table, 'to_python_%s' % self.key):
-            cb = getattr(self.bound_row.controller.table, 'to_python_%s' % self.key)
-            return cb(self.bound_row.controller.table, self.row_index, self.bound_row.row,
-                      self.column.get_value(self.bound_row.row))
-        return self.column.get_value(self.bound_row.row)
 
     def html_cell_attr(self):
         return self.column.html_cell_attr()

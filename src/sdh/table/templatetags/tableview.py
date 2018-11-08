@@ -14,9 +14,10 @@ class TicketProfilesNode(template.Node):
         self.save_to = save_to
         
     def render(self, context):
-        context[self.save_to.resolve(context)] = TableViewProfile.objects.filter(user=self.user.resolve(context),
-                                                                                 tableview_name=self.tableview_name.resolve(context),
-                                                                                 is_default=False).order_by('label')
+        context[self.save_to.resolve(context)] = TableViewProfile.objects.filter(
+            user=self.user.resolve(context),
+            tableview_name=self.tableview_name.resolve(context),
+            is_default=False).order_by('label')
         return ''
 
 

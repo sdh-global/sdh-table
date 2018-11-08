@@ -1,14 +1,14 @@
 from __future__ import unicode_literals
 
-from django.core.urlresolvers import reverse, NoReverseMatch
-from django.db.models.manager import Manager
-from django.utils import timezone
-from django.utils import formats
-from django.utils.six import string_types
-from django.utils.encoding import force_text
 from django.conf import settings
+from django.utils import formats, timezone, six
+from django.utils.encoding import force_text
 from django.utils.safestring import mark_safe
+
+from django.db.models.manager import Manager
+from django.db.models.constants import LOOKUP_SEP
 from django.template.loader import render_to_string
+from django.core.urlresolvers import reverse, NoReverseMatch
 
 
 class BaseWidget(object):
@@ -42,7 +42,7 @@ class BaseWidget(object):
     def get_value(self, row, refname=None, default=None):
         if refname is None and self.refname is None:
             return default
-        value = self._recursive_value(row, (refname or self.refname).split('__'))
+        value = self._recursive_value(row, (refname or self.refname).split(LOOKUP_SEP))
         if value is not None:
             if isinstance(value, Manager):
                 return value.all()
@@ -116,7 +116,7 @@ class HrefWidget(BaseWidget):
         self.reverse = reverse
         if not reverse_column:
             self.reverse_column = ('id',)
-        elif isinstance(reverse_column, string_types):
+        elif isinstance(reverse_column, six.string_types):
             self.reverse_column = (reverse_column,)
         else:
             self.reverse_column = reverse_column

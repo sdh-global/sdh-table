@@ -238,10 +238,10 @@ class TableController(object):
             if self.request.GET.get('action') == 'load_page':
                 self.process_form_filter()
 
-                qs = self.table.apply_filter(self.filter, self.source)
-                if qs:
-                    # Backward compatibility
-                    self.source = qs
+                self.table.apply_filter(self.filter, self.source)
+
+                if self.paginator:
+                    self.paginator.calc()
 
                 return JsonResponse(
                     {'page_count': self.paginator.get_page_count(),

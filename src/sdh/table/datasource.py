@@ -28,6 +28,7 @@ class QSDataSource(BaseDatasource):
         if isinstance(item, slice):
             qs = self._clone()
             return qs[item]
+        raise KeyError
 
     def __item__(self, key):
         pass

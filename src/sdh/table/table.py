@@ -212,7 +212,7 @@ class BoundCell(object):
 
         default_value = re.sub(r'\n\r|\r\n|\r|\n',
                                ' ',
-                               str(strip_tags(self.as_html().replace('&nbsp;', ' '))))
+                               strip_tags(self.as_html().replace('&nbsp;', ' ')))
         return default_value
 
     def to_python(self):

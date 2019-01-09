@@ -241,11 +241,16 @@ class LazyPaginator(Paginator):
         self._fetch_rows()
 
         if not self._pages:
-            if len(self._rows) > self.row_per_page:
+            rows_count = len(self._rows)
+            if rows_count > self.row_per_page:
                 self.set_page_count(self._page + 1)
             else:
                 # force re-fetch last page rows
-                self._page = self.last_page = self._queryset.count() // self.row_per_page + 1
+                if rows_count < self.row_per_page:
+                    self._page = self.last_page = 1
+                else:
+                    self._page = self.last_page = self._queryset.count() // self.row_per_page
+
                 self._fetch_rows()
 
         if self._page < 1:

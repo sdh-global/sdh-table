@@ -229,6 +229,24 @@ class LazyPaginator(Paginator):
         start, end = self.get_offset()
         self._rows = list(self._queryset[start:end + 1])
 
+    def _find_rows(self):
+        page = max(1, self._page - self.segment)
+        row_per_page = atoi(self.row_per_page, 1)
+        row_per_segment = row_per_page * self.segment
+        start = (page - 1) * row_per_page
+        end = start + row_per_segment
+        self._rows = list(self._queryset[start:end])
+        rows_count = len(self._rows)
+        if rows_count:
+            page_count = rows_count // row_per_page
+            if not rows_count % row_per_page:
+                page_count -= 1
+            self._page = self.last_page = page + page_count
+            self._rows = self._rows[page_count * self.row_per_page:]
+        else:
+            self._page = 1
+            self._fetch_rows()
+
     def calc(self, page=None):
         if self.request and 'page' in self.request.GET and page is None:
             page = self.request.GET['page']
@@ -241,12 +259,20 @@ class LazyPaginator(Paginator):
         self._fetch_rows()
 
         if not self._pages:
-            if len(self._rows) > self.row_per_page:
+            rows_count = len(self._rows)
+            if not rows_count:
+                if self._page == 1:
+                    return
+                if self.last_page:
+                    self._page = self.last_page
+                    self._fetch_rows()
+                else:
+                    self._find_rows()
+            rows_count = len(self._rows)
+            if rows_count > self.row_per_page:
                 self.set_page_count(self._page + 1)
             else:
-                # force re-fetch last page rows
-                self._page = self.last_page = self._queryset.count() // self.row_per_page + 1
-                self._fetch_rows()
+                self.last_page = self._page
 
         if self._page < 1:
             raise Http404

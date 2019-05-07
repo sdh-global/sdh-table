@@ -143,8 +143,13 @@ class TableController(object):
             profile_qs = profile_qs.filter(user__isnull=True)
         elif not fn_value(self.request.user.is_anonymous):
             profile_qs = profile_qs.filter(user=self.request.user)
-
-        if (profile_id is None and self.session_key not in self.request.session) or profile_id == 'default':
+            
+        if profile_id == 'default' and self.request.user:
+            self.profile, created = TableViewProfile.objects.get_or_create(
+                tableview_name=self.table.id,
+                user=self.request.user,
+                is_default=True)
+        elif profile_id is None and self.session_key not in self.request.session:
             # load default state
             self.profile = get_object_or_none(profile_qs,
                                               is_default=True)

@@ -28,7 +28,7 @@ class TableViewProfile(models.Model):
         dump = codecs.decode(self.dump, 'hex_codec')
         try:
             return pickle.loads(dump)
-        except (pickle.UnpicklingError, AttributeError, ImportError, IndexError):
+        except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, IndexError):
             pass
 
     @classmethod

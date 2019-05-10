@@ -1,11 +1,11 @@
 from setuptools import find_packages, setup
 
-version = '1.1.2'
+version = '1.1.4'
 
 setup(
     name='sdh.table',
     version=version,
-    url='https://www.djangoproject.com/',
+    url='https://bitbucket.org/sdh-llc/sdh-table/',
     author='Software Development Hub LLC',
     author_email='dev-tools@sdh.com.ua',
     description='Table rendering engine',

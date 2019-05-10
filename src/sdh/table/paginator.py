@@ -205,6 +205,7 @@ class LazyPaginator(Paginator):
                                             skip_startup_recalc, segment)
         self._last_page = None
         self._rows = []
+        self.segment = segment or 3
 
     def get_next_page_group(self):
         if self.last_page and self.page + self.segment * 2 + 1 > self.last_page:
@@ -265,9 +266,9 @@ class LazyPaginator(Paginator):
                     return
                 if self.last_page:
                     self._page = self.last_page
-                    self._fetch_rows()
-                else:
-                    self._find_rows()
+
+                self._fetch_rows()
+
             rows_count = len(self._rows)
             if rows_count > self.row_per_page:
                 self.set_page_count(self._page + 1)

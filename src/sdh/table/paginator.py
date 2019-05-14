@@ -266,8 +266,9 @@ class LazyPaginator(Paginator):
                     return
                 if self.last_page:
                     self._page = self.last_page
-
-                self._fetch_rows()
+                    self._fetch_rows()
+                else:
+                    self._find_rows()
 
             rows_count = len(self._rows)
             if rows_count > self.row_per_page:

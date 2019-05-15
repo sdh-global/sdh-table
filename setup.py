@@ -1,6 +1,6 @@
 from setuptools import find_packages, setup
 
-version = '1.1.5'
+version = '1.1.6'
 
 setup(
     name='sdh.table',

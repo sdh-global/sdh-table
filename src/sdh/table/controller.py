@@ -317,6 +317,14 @@ class TableController(object):
 
         self.form_filter_instance = form
 
+    def get_filter_detail(self):
+        """
+        Return detail of applied filter
+        :return:
+        """
+        
+
+
     def get_saved_state(self):
         from .models import TableViewProfile
 

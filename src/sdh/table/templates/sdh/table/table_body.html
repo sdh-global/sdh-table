@@ -1,153 +1,422 @@
 {% load i18n %}
-{% load args %}
-{% comment %}
-table - > instanse of BaseTableView,
-          see __iter__ method
+{% load tableview %}
 
-row  -> instanse of BoundRow
-cell -> instanse of BoundCell
-
-{% endcomment %}
 <script>
-function show_save_dialog(obj, table_id, order_by) {
-    args = {'action': 'save_state'};
-    if (order_by) {
-        args['sort_by'] = order_by;
-    }
+    var CustomInfoModal = (function () {
+        return {
+            showModal: showModal,
+            showRemoveModal: showRemoveModal,
+            showPromtModal: showPromtModal,
+        };
 
-    df = doSimpleXMLHttpRequest('', args);
-    df.addCallback(function(result) { 
-        alert("State has been saved success");
-        location.href="?profile=default";
+        function showModal(message, onHideCallBack) {
+            var informModal = $('#inform-table-modal');
+
+            informModal.modal('show');
+            $('#inform-table-modal .modal-body p').text(message);
+
+            setTimeout(function () {
+                informModal.modal('hide');
+            }, 2000);
+
+            informModal.on('hide.bs.modal', onHideCallBack);
+        }
+
+        function showRemoveModal(message, onRemove) {
+            var removeModal = $('#remove-table-modal');
+            var removeButton = $('#remove-table-modal .remove-button');
+
+            removeModal.modal('show');
+            $('#remove-table-modal .modal-body p').text(message);
+
+            removeButton.off('click');
+            removeButton.on('click', function (e) {
+                removeModal.modal('hide');
+                onRemove(e);
+            });
+        }
+
+        function showPromtModal(message, onCreate) {
+            var promtModal = $('#promt-table-modal');
+            var createButton = $('#promt-table-modal .create-button');
+
+            promtModal.modal('show');
+            $('#promt-table-modal .modal-body p').text(message);
+
+            createButton.off('click');
+            createButton.on('click', function (e) {
+                promtModal.modal('hide');
+                var text = $(promtModal.find('input'))[0].value;
+                onCreate(e, text);
+            });
+        }
+    })();
+</script>
+
+<script>
+    $(function () {
+        $('[data-profile-id]').on('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            remove_profile($('[data-profile-id]').attr('data-profile-id'));
+        });
     });
-    return false;
-}
 
-function show_save_as_dialog(obj, table_id, order_by) {
-    save_as = prompt("Enter name for save state");
-
-    if (save_as) {
-        args = {'action': 'save_state_as',
-                'name': save_as};
-
+    function show_save_dialog(obj, table_id, order_by) {
+        args = {'action': 'save_state'};
         if (order_by) {
             args['sort_by'] = order_by;
         }
-            
-        df =  loadJSONDoc('', args);
-        df.addCallback(function(result) { 
-            if (result.status == 'OK') {
-                alert("State has been saved success");
-                location.href="?profile="+result.id;
-            } else {
-                alert("Unexpected error occured while saving profile");
-            }
-        });
-    }
-    return false;
-}
 
-function remove_profile(profile_id) {
-    if (!confirm("Do you want to remove profile?")) {
+        df = doSimpleXMLHttpRequest('', args);
+
+        df.addCallback(function(result) {
+            CustomInfoModal.showModal('Default changes have been saved successfully.', function () {
+                location.href = '?profile=default';
+            });
+        });
+
         return false;
     }
-    args = {
-        'action': 'remove_profile',
-        'value': profile_id
-        };
-    df = doSimpleXMLHttpRequest('', args);
-    df.addCallback(function(result) { 
-        alert("Profile has been removed");
-        location.href = location.href;
-    });
-    return false;
-}
+
+    function show_save_as_dialog(obj, table_id, order_by) {
+        CustomInfoModal.showPromtModal('Specify a configuration profile name for applied changes.', function (e, text) {
+            if (text) {
+                args = {'action': 'save_state_as',
+                        'name': text};
+
+                if (order_by) {
+                    args['sort_by'] = order_by;
+                }
+
+                df =  loadJSONDoc('', args);
+                df.addCallback(function(result) {
+                    if (result['content'].status == 'OK') {
+                        CustomInfoModal.showModal('The profile has been saved successfully.', function () {
+                            location.href = '?profile=' + result['content'].id;
+                        });
+                    } else {
+                        CustomInfoModal.showModal('Unexpected error occured while saving profile', null);
+                    }
+                });
+            }
+        });
+
+        return false;
+    }
+
+    function remove_profile(profile_id) {
+        CustomInfoModal.showRemoveModal('Are you sure you want to remove the selected profile?', function () {
+            args = {
+                'action': 'remove_profile',
+                'value': profile_id
+            };
+
+            df = doSimpleXMLHttpRequest('', args);
+
+            df.addCallback(function () {
+                CustomInfoModal.showModal('Profile has been removed.', function () {
+                    location.href = location.href;
+                });
+            });
+        });
+    }
 
 </script>
-{% if controller.profile %}
-{% if not controller.profile.is_default %}
-    <h2>{% trans 'Profile' %}: {{ controller.profile.label }}
-    <a href="" onclick="return remove_profile('{{ controller.profile.id }}');"><img src="/s/img/16x16/editdelete.png"></a></h2>
-{% endif %}
-{% endif %}
-<div id="toolbar">
-{% if table.search %}
-  <form id="changelist-search" action="" method="get">
-    <div><!-- DIV needed for valid HTML -->
-      <label for="searchbar"><img src="/media/img/admin/icon_searchbox.png" alt="{% trans 'Search' %}" /></label>
-      <input type="text" size="40" name="search" value="{{ controller.search_value|default_if_none:"" }}" id="searchbar" /><input type="submit" value="{% trans 'Search' %}" />
+<!-- <div class="space-6"></div> -->
+
+<div class="cardbox">
+  <div class="container-fluid py-3">
+    <div class="row align-items-center">
+      {% if table.search %}
+        <div class="col col-sm-5 col-md-6 col-lg-3">
+          <div id="changelist">
+            <div id="toolbar">
+              <form action="" id="changelist-search" action="" method="get">
+                <div class="input-group input-group-search">
+                  <!-- DIV needed for valid HTML -->
+                  <input class="form-control search-query" type="text" name="search" placeholder="Search filter..." value="{{ controller.search_value|default_if_none:""}}" id="searchbar">
+                  <span class="input-group-btn" style="width: auto">
+                  <button class="btn" type="submit">
+                    <em class="ion-ios-search"></em>
+                  </button>
+                  </span>
+                </div>
+              </form>
+            </div>
+            <script type="text/javascript">
+                document.getElementById("searchbar").focus();
+            </script>
+          </div>
+        </div>
+      {% endif %}
+      <div class="col col-sm-7 col-md-6 col-lg-3">
+        <div class="btn-group">
+
+          {% if filter_form %}
+            <button type="button" class="btn btn-secondary"  data-toggle="modal" data-target="#ModalFilter" title="{% trans 'Filter' %}">
+              <em class="icon icon-left icomoon-filter"></em>
+              <span class="d-none d-xl-inline-block">{% trans 'Filter' %}</span>
+            </button>
+          {% endif %}
+
+          <a href="" onclick="TableColumns.initColumnsCheckboxes()" data-toggle="modal" class="btn btn-secondary"  data-target="#ModalColumn" title="{% trans 'Columns' %}">
+            <em class="icon icon-left icomoon-calendar1"></em>
+            <span class="d-none d-xl-inline-block">{% trans 'Columns' %}</span>
+          </a>
+
+          <a href="" onclick="return show_save_dialog(this, '{{ table.id }}', '{{ request.GET.sort_by }}');"  class="btn btn-secondary" title="{% trans 'Save as default' %}">
+            <em class="icon icon-left icomoon-save"></em>
+            <span class="d-none d-xl-inline-block">{% trans 'Save as default' %}</span>
+          </a>
+
+           <a href="" onclick="return show_save_as_dialog(this, '{{ table.id }}', '{{ request.GET.sort_by }}');"  class="btn btn-secondary" title="{% trans 'Save as' %}">
+              <em class="icon icon-left icomoon-save"></em>
+             <span class="d-none d-xl-inline-block">{% trans 'Save as' %}</span>
+           </a>
+
+
+          <div class="dropdown btn-group">
+
+            <button
+                    data-toggle="dropdown"
+                    class="btn dropdown-toggle btn-secondary"
+                    aria-expanded="false"
+                    title={% if controller.profile.is_default %}
+                              {% trans 'Default' %}
+                            {% elif controller.profile in controller.get_saved_state %}
+                              {{ controller.profile.label }}
+                            {% else %}
+                              {% trans 'Custom' %}
+                            {% endif %}
+            >
+              <em class="icon icon-left icomoon-team"></em>
+              <span class="d-none d-xl-inline-block">
+                {% if controller.profile.is_default %}
+                  {% trans 'Default' %}
+                {% elif controller.profile in controller.get_saved_state %}
+                  {{ controller.profile.label }}
+                {% else %}
+                  {% trans 'Custom' %}
+                {% endif %}
+              </span>
+            </button>
+            <div class="dropdown-menu">
+              {% if controller.profile.is_default %}
+                <a class="dropdown-item" href="?profile=default">{% trans 'default' %}</a>
+              {% else %}
+                <a class="dropdown-item" href="?profile=default">{% trans 'default' %}</a>
+              {% endif %}
+              {% for item in controller.get_saved_state %}
+                {% ifequal item controller.profile %}
+                  <a class="dropdown-item" href="?profile={{ item.id }}">{{ item.label }}
+                      <span class="icon ion-close-round text-danger" data-profile-id="{{ controller.profile.id }}"></span>
+                  </a>
+                {% else %}
+                  <a class="dropdown-item" href="?profile={{ item.id }}">{{ item.label }}</a>
+                {% endifequal %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% if controller.paginator %}
+        <div class="col-12 col-lg-3 mt-3 mt-lg-0 text-right ml-auto">
+          {% with controller.paginator as paginator %} {% include "v3/paginator.html" %} {% endwith %}
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  <form id="changelist-form" action="" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="table-overflow">
+      <table id="result_list" class="table table-striped" role="grid" aria-describedby="dynamic-table_info">
+        {% include "sdh/table/table_head.html" %}
+        <tbody>
+          {% for row in controller.get_paginated_rows %}
+            <tr id="{{ row.get_id }}" class="{% cycle 'row1' 'row2' %} {{ row.get_row_class }}">
+              {% for cell in row %}
+                <TD {{ cell.html_cell_attr }} {% if cell.get_cell_class %}class="{{ cell.get_cell_class }}"{% endif %} {% if cell.get_cell_style %}style="{{ cell.get_cell_style }}"{% endif %}>
+                  {% if cell.column.template %}
+                    {% with row.row as row%}
+                    {% include cell.column.template %}
+                    {% endwith %}
+                  {% else %}
+                    {{ cell.as_html }}
+                  {% endif %}
+                </TD>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </form>
-<script type="text/javascript">document.getElementById("searchbar").focus();</script>
-{% endif %}
-<a href="" onclick="Layer.toggle_display('setup_dialog_{{ table.id }}', this); return false;">{% trans 'Columns' %}</a> | 
-<a href="" onclick="Layer.toggle_display('filter_dialog_{{ table.id }}', this); return false;">{% trans 'Filter' %}</a> |
-<a href="" onclick="return show_save_dialog(this, '{{ table.id }}', '{{ request.GET.sort_by }}');">{% trans 'Remember as default state' %}</a> | 
-<a href="" onclick="return show_save_as_dialog(this, '{{ table.id }}', '{{ request.GET.sort_by }}');">{% trans 'Remember state as' %}</a>
+{#  <div class="container-fluid py-3">#}
+{#    <div class="text-right">#}
+{#      {% if controller.paginator %}#}
+{#        {% with controller.paginator as paginator %}#}
+{#          {% include "v3/paginator.html" %}#}
+{#        {% endwith %}#}
+{#      {% endif %}#}
+{#    </div>#}
+{#  </div>#}
 </div>
-{% if controller.paginator %}
-  {% with controller.paginator as paginator %}
-    {% include "paginator.html" %}
-  {% endwith %}
-{% endif %}
-<table>
-    {% include "table_head.html" %}
-    <tbody>
-        {% for row in controller.get_paginated_rows %}
-        <tr id="{{ row.get_id }}" class="{% cycle row1,row2 %} {{ row.get_row_class }}">
-            {% for cell in row %}
-                <TD {{ cell.html_cell_attr }} {% if cell.get_cell_class %}class="{{ cell.get_cell_class }}"{% endif %} {% if cell.get_cell_style %}style="{{ cell.get_cell_style }}"{% endif %}>{{ cell.as_html }}</TD>
+
+<div class="modal fade" id="ModalColumn" tabindex="-1" role="dialog" aria-labelledby="ModalColumnLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form action="" method="POST">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">{% trans 'Columns' %}</h5>
+          <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span class="ion-android-close"></span></button>
+        </div>
+        <div class="modal-body">
+          <div id="setup_dialog_{{ table.id }}">
+            <div class="control-group">
+              <div class="row">
+                <div class="col-12 mb-3 pb-3 border-bottom--light">
+                  <div class="custom-control custom-checkbox">
+                    <input type="checkbox" class="custom-control-input" checked name="switcher" id="all">
+                    <label class="custom-control-label" for="all">{% trans 'Select/Deselect All' %}</label>
+                  </div>
+                </div>
+              </div>
+            {% split_column controller.iter_all_title as all_title %}
+            <div class="row">
+            {% for titles in  all_title %}
+              <div class="col">
+              {% for key,cell in titles %}
+                <div class="custom-control custom-checkbox checkbox_label">
+                  {% if cell.is_permanent %}
+                    <input type="checkbox" class="custom-control-input" name="setup_{{ table.id }}_column_{{ key }}" id="{{ key }}" value="{{ key }}" checked disabled>
+                  {% else %}
+                    <input type="checkbox" class="custom-control-input" name="setup_{{ table.id }}_column_{{ key }}" id="{{ key }}" value="{{ key }}" {% if cell.is_visible %}checked{% endif %}>
+                  {% endif %}
+                  <label class="custom-control-label" for="{{ key }}">{{ cell.column.html_title }}</label>
+                </div>
+              {% endfor %}
+              </div>
             {% endfor %}
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% if controller.paginator %}
-  {% with controller.paginator as paginator %}
-    {% include "paginator.html" %}
-  {% endwith %}
-{% endif %}
-<div class="tableview-saved-search">
-<h4>{% trans 'Saved profiles' %}:</h4>
-<ul>
-    {% if controller.profile.is_default %}
-        <LI><a href="?profile=default"><b>{% trans 'default' %}</b></a></LI> 
-    {% else %}
-        <LI><a href="?profile=default">{% trans 'default' %}</a></LI> 
-    {% endif %}
-    &#124;
-    {% for item in controller.get_saved_state %}
-        {% ifequal item controller.profile %}
-            <li><a href="?profile={{ item.id }}"><b>{{ item.label }}</b></a></li>
-        {% else %}
-            <li><a href="?profile={{ item.id }}">{{ item.label }}</a></li>
-        {% endifequal %}
-        &#124;
-    {% endfor %}
-</ul>
+            </div>
+
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <input type="submit" name="_save_column_setup" class="btn btn-default btn-primary" value={% trans 'Save' %}>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
-<div id="setup_dialog_{{ table.id }}" class="table_setup_layer">
-    <form action="" method="POST">
-    <ul>
-        {% for key,cell in controller.iter_all_title %}
-            {% if cell.is_permanent %}
-                <li><input type="checkbox" name="setup_{{ table.id }}_column_{{ key }}" value="{{ key }}" checked="true" disabled="true">{{ cell.column.html_title }}</li>
-            {% else %}
-                <li><input type="checkbox" name="setup_{{ table.id }}_column_{{ key }}" value="{{ key }}" {% if cell.is_visible %}checked="True"{% endif %}>{{ cell.column.html_title }}</li>
+<div class="modal fade" id="ModalFilter" tabindex="-1" role="dialog" aria-labelledby="ModalFilterLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="filter-form" action="?{% args request.GET 'profile' 'custom' %}" method="POST">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="ModalFilterLabel">{% trans 'Filter' %}</h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span class="ion-android-close"></span></button>
+        </div>
+        <div class="modal-body">
+          <div id="filter_dialog_{{ table.id }}">
+            {% if filter_form.errors %}
+              <p class="errornote">{% trans 'Please correct the error below.' %}</p>
             {% endif %}
-        {% endfor %}
-    </ul>
-    <input type="submit" name="_save_column_setup" value="{% trans 'Save' %}">
-    </form>
+            {% for f in filter_form %}
+              <div class="form-group row">
+                <label class="col-6 col-md-3 col-lg-2 control-label">{{ f.label }}</label>
+                <div class="col-6 col-md-9 col-lg-10">
+                  {% include 'v3/partials/form_field.html' with field=f %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <input type="reset" id="clear-form" class="btn btn-secondary" value="{% trans 'Clear' %}">
+          <input type="submit" name="form_filter" class="btn btn-default btn-primary" value={% trans 'Apply' %}>
+        </div>
+        {{ filter_form.media }}
+      </form>
+    </div>
+  </div>
 </div>
 
-<div id="filter_dialog_{{ table.id }}" class="table_setup_layer" style="width: 500px;">
-    <h1>{% trans 'Filter form' %}</h1>
-    <form action="?{% args request.GET 'profile' 'custom' %" method="POST">
-        <table>
-        {{ filter_form }}
-        </table>
-        <input type="submit" name="form_filter" value="{% trans 'Apply' %}">
-    </form>
+<div class="modal fade" id="inform-table-modal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title display-inline-block">Save</h3>
+        <button type="button" class="close small-size-for-close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p></p>
+      </div>
+    </div>
+  </div>
 </div>
+
+<div class="modal fade" id="remove-table-modal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title display-inline-block">Remove a profile</h3>
+        <button type="button" class="close small-size-for-close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary remove-button">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="promt-table-modal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title display-inline-block">Create a profile</h3>
+        <button type="button" class="close small-size-for-close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p></p>
+          <div>
+              <input class="form-control" type="text">
+          </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary create-button">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'v3/js/table_filter.js' %}"></script>
+<script src="{% static 'v3/js/table_body_columns.js' %}"></script>
+<script type="text/javascript">
+    TableFilter.tableId = '{{ table.id }}';
+    $(function () {
+        TableFilter.clearFilter();
+        TableColumns.handleClick();
+    });
+    {% if filter_form.errors %}
+        addLoadEvent(function() {Layer.toggle_display('filter_dialog_{{ table.id }}', getElement('id_filter_button'))});
+    {% endif %}
+</script>
+

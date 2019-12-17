@@ -7,8 +7,10 @@ syntax: glob
 *.DS_Store
 *~
 .\#*
-env/*
+env2/*
+env2/*
 .venv/*
 .idea/
 dist/*
+.pypirc
 *egg-info/*

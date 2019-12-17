@@ -7,7 +7,7 @@ syntax: glob
 *.DS_Store
 *~
 .\#*
-env2/*
+env/*
 env2/*
 .venv/*
 .idea/

@@ -5,6 +5,7 @@ import codecs
 
 from django.db import models
 from django.conf import settings
+from django.utils import six
 
 
 class TableViewProfile(models.Model):
@@ -34,4 +35,6 @@ class TableViewProfile(models.Model):
     @classmethod
     def dump_state(cls, data):
         dump = pickle.dumps(data, cls.PICKLE_PROTOCOL)
+        if six.PY3:
+            return codecs.encode(dump, 'hex_codec').decode('ascii')
         return codecs.encode(dump, 'hex_codec')

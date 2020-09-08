@@ -1,4 +1,3 @@
-syntax: glob
 *.o
 *.orig
 *.rej
@@ -7,7 +6,7 @@ syntax: glob
 *.DS_Store
 *~
 .\#*
-env2/*
+env/*
 env2/*
 .venv/*
 .idea/

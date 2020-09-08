@@ -302,18 +302,24 @@ class TableController(object):
         if not self.table.filter_form:
             return
 
+        if getattr(self.table.filter_form, 'has_queryset', False):
+            params = {
+                'queryset': self.source._clone()
+            }
+        else:
+            params = {}
+
         if self.request.method == 'POST' and 'form_filter' in self.request.POST:
-            form = self.table.filter_form(self.request.POST, request=self.request)
+            form = self.table.filter_form(self.request.POST, request=self.request, **params)
             if form.is_valid():
                 self.filter = form.cleaned_data
                 self.save()
                 return HttpResponseRedirect("?profile=custom")
         elif self.request.method == 'POST' and 'form_filter_reset' in self.request.POST:
-            form = self.table.filter_form(None, initial={}, request=self.request)
+            form = self.table.filter_form(None, initial={}, request=self.request, **params)
             self.filter = {}
         else:
-            form = self.table.filter_form(request=self.request,
-                                          initial=self.filter)
+            form = self.table.filter_form(request=self.request, initial=self.filter, **params)
 
         self.form_filter_instance = form
 

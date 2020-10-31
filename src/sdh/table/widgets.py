@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 from django.conf import settings
 from django.utils import formats, timezone, six
 from django.utils.encoding import force_text
@@ -8,10 +6,10 @@ from django.utils.safestring import mark_safe
 from django.db.models.manager import Manager
 from django.db.models.constants import LOOKUP_SEP
 from django.template.loader import render_to_string
-from django.core.urlresolvers import reverse, NoReverseMatch
+from django.urls import reverse, NoReverseMatch
 
 
-class BaseWidget(object):
+class BaseWidget:
     creation_counter = 0
 
     def __init__(self, label, refname=None, width=None, title_attr=None, cell_attr=None):

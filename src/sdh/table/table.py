@@ -1,5 +1,3 @@
-from __future__ import unicode_literals
-
 import re
 import csv
 import operator
@@ -60,7 +58,7 @@ class DeclarativeFieldsMetaclass(type):
         return new_class
 
 
-class BaseTableView(object):
+class BaseTableView:
     lookup_prefixes = {
         '^': 'istartswith',
         '=': 'iexact',
@@ -144,7 +142,7 @@ class BaseTableView(object):
             source.distinct(base)
 
 
-class CellTitle(object):
+class CellTitle:
     def __init__(self, controller, key, column):
         self.controller = controller
         self.key = key
@@ -172,7 +170,7 @@ class CellTitle(object):
         return self.key in self.controller.visible_columns
 
 
-class BoundCell(object):
+class BoundCell:
     def __init__(self, row_index, key, bound_row, column):
         self.row_index = row_index
         self.bound_row = bound_row
@@ -229,7 +227,7 @@ class BoundCell(object):
         return self.key
 
 
-class BoundRow(object):
+class BoundRow:
     def __init__(self, controller, row_index, row):
         self.controller = controller
         self.row = row

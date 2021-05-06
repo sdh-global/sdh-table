@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.utils import formats, timezone, six
+from django.utils import formats, timezone
 from django.utils.encoding import force_text
 from django.utils.safestring import mark_safe
 
@@ -114,7 +114,7 @@ class HrefWidget(BaseWidget):
         self.reverse = reverse
         if not reverse_column:
             self.reverse_column = ('id',)
-        elif isinstance(reverse_column, six.string_types):
+        elif isinstance(reverse_column, str):
             self.reverse_column = (reverse_column,)
         else:
             self.reverse_column = reverse_column

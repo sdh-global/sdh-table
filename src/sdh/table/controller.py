@@ -1,26 +1,16 @@
-from __future__ import unicode_literals
-
-import json
 import csv
 from datetime import datetime
 from django.http import HttpResponseRedirect, HttpResponse
-try:
-    from django.http import JsonResponse
-except ImportError:
-    class JsonResponse(HttpResponse):
-        def __init__(self, data, **kwargs):
-            kwargs.setdefault('content_type', 'application/json')
-            dumps_params = kwargs.pop('json_dumps_params', {})
-            data = json.dumps(data, **dumps_params)
-            super(JsonResponse, self).__init__(content=data, **kwargs)
+from django.template.loader import render_to_string
+from django.http import JsonResponse
 
 from .table import CellTitle, BoundRow
-from .shortcuts import get_object_or_none, fn_value, render_to_string
+from .shortcuts import get_object_or_none, fn_value
 from .paginator import Paginator
 from .datasource import BaseDatasource
 
 
-class TableController(object):
+class TableController:
     def __init__(self, table, datasource, request, row_per_page=None, render_dict=None, paginator_class=None):
         self.table = table
         self.request = request

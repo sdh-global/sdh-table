@@ -7,7 +7,6 @@ from collections import OrderedDict
 
 from django.db import models
 from django.db.models.constants import LOOKUP_SEP
-from django.utils import six
 from django.utils.html import strip_tags
 
 from . import widgets
@@ -21,7 +20,9 @@ class DeclarativeFieldsMetaclass(type):
     'base_fields', taking into account parent class 'base_fields' as well.
     """
 
-    def __new__(mcs, name, bases, attrs):
+    def __new__(cls, name, bases, attrs, **kwargs):
+        super_new = super().__new__
+
         # Collect columns from current class.
         current_columns = []
         for key, value in list(attrs.items()):
@@ -53,12 +54,12 @@ class DeclarativeFieldsMetaclass(type):
         attrs['csv_dialect'] = getattr(attr_meta, 'csv_dialect', csv.excel)
         attrs['title'] = getattr(attr_meta, 'title', None)
 
-        new_class = super(DeclarativeFieldsMetaclass, mcs).__new__(mcs, name, bases, attrs)
+        new_class = super_new(cls, name, bases, attrs, **kwargs)
 
         return new_class
 
 
-class BaseTableView:
+class TableView(metaclass=DeclarativeFieldsMetaclass):
     lookup_prefixes = {
         '^': 'istartswith',
         '=': 'iexact',
@@ -130,7 +131,7 @@ class BaseTableView:
     def apply_search(self, search_value, source):
         if not search_value:
             return
-        orm_lookups = [self.construct_search(six.text_type(search_field)) for search_field in self.search]
+        orm_lookups = [self.construct_search(str(search_field)) for search_field in self.search]
         base = source.qs
         queries = [models.Q(**{orm_lookup: search_value}) for orm_lookup in orm_lookups]
         source.filter(reduce(operator.or_, queries))
@@ -243,7 +244,3 @@ class BoundRow:
 
     def get_row_class(self):
         return self.controller.table.get_row_class(self.controller, self.row)
-
-
-class TableView(six.with_metaclass(DeclarativeFieldsMetaclass, BaseTableView)):
-    """ Table view class """

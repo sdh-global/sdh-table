@@ -90,7 +90,7 @@
                     args['sort_by'] = order_by;
                 }
 
-                df =  loadJSONDoc('', args);
+                df = loadJSONDoc('', args);
                 df.addCallback(function(result) {
                     if (result['content'].status == 'OK') {
                         CustomInfoModal.showModal('The profile has been saved successfully.', function () {

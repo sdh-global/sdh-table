@@ -198,6 +198,7 @@ class TemplateWidget(BaseWidget):
         return mark_safe(render_to_string(self.template,
                                           {'item': row,
                                            'value': value,
+                                           'row': row,
                                            'index': row_index,
                                            'request': _request}))
 

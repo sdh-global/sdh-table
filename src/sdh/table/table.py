@@ -92,11 +92,14 @@ class TableView(metaclass=DeclarativeFieldsMetaclass):
     def apply_filter(self, cleaned_data, source):
         """
         A function that filter results from 'source' using 'cleaned_data' from 'filter_form'.
-        Usage example:
+
+        Usage example ::
+
             def apply_filter(self, cleaned_data, source):
                 archived_only = cleaned_data.get('archived_only')
                 if archived_only:
                     qs.filter(archived=True)
+
         """
         pass
 

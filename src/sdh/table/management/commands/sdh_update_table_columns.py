@@ -35,7 +35,7 @@ class Command(BaseCommand):
             changed = False
             for column in columns:
                 old_column, new_column = column.split(':')
-                if old_colmun in state['visible']:
+                if old_column in state['visible']:
                     state['visible'].remove(old_column)
                     state['visible'].append(new_column)
                     changed = True

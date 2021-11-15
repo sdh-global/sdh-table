@@ -5,7 +5,7 @@ from sdh.table.models import TableViewProfile
 class Command(BaseCommand):
     help = (
         "Update table columns to match renames in source code."
-        "Ex. ./manage.py update_table_columns --name workorder_profile "
+        "Ex. ./manage.py sdh_update_table_columns --name workorder_profile "
         "--column old_name:new_name --column old_name2:new_name2"
     )
 

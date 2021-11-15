@@ -30,7 +30,7 @@ class Command(BaseCommand):
         items = TableViewProfile.objects.filter(tableview_name=tableview_name)
         for item in items:
             state = item.state
-            if 'visible' not in state:
+            if state and 'visible' not in state:
                 continue
             changed = False
             for column in columns:

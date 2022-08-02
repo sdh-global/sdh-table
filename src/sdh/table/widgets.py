@@ -2,6 +2,7 @@ from django.conf import settings
 from django.utils import formats, timezone
 from django.utils.encoding import force_text
 from django.utils.safestring import mark_safe
+from django.utils.html import escape
 
 from django.db.models.manager import Manager
 from django.db.models.constants import LOOKUP_SEP
@@ -80,13 +81,13 @@ class DateTimeWidget(BaseWidget):
     DateTimeWidget for table field which renders the field with localized datetime as column value
     """
     def __init__(self, label, format=None, **kwargs):
-        self.format = format or "%d/%m/%y %H:%M"
+        self.format = format or 'DATETIME_FORMAT'
         super(DateTimeWidget, self).__init__(label, **kwargs)
 
     def html_cell(self, row_index, row, **kwarg):
         value = self.get_value(row)
         if value:
-            return value.strftime(self.format)
+            return formats.date_format(value, self.format)
         return mark_safe('&nbsp;')
 
 
@@ -130,7 +131,7 @@ class HrefWidget(BaseWidget):
 
     @staticmethod
     def render_url(href, value):
-        return mark_safe("<a href='%s'>%s</a>" % (href, value))
+        return mark_safe("<a href='%s'>%s</a>" % (href, escape(value)))
 
     def html_cell(self, row_index, row, **kwargs):
         href = self.get_url(row)

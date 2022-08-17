@@ -135,7 +135,7 @@ class HrefWidget(BaseWidget):
 
     def html_cell(self, row_index, row, **kwargs):
         href = self.get_url(row)
-        value = self.get_value(row, default='&nbsp;')
+        value = self.get_value(row, default='')
         if href:
             return self.render_url(href, value)
         return value
@@ -160,7 +160,7 @@ class ConditionHrefWidget(HrefWidget):
         _request = kwargs.pop('request', None)
         is_href = True
         href = None
-        value = self.get_value(row, default='&nbsp;')
+        value = self.get_value(row, default='')
         if self.condition and callable(self.condition):
             is_href &= bool(self.condition(row, _request))
         if self.acl and hasattr(_request, 'acl'):

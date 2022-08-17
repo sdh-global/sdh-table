@@ -1,11 +1,11 @@
 from setuptools import find_packages, setup
 
-version = '2.1.4'
+version = '2.1.5'
 
 setup(
     name='sdh.table',
     version=version,
-    url='https://bitbucket.org/sdh-llc/sdh-table/',
+    url='https://github.com/sdh-global/sdh-table',
     author='Software Development Hub LLC',
     author_email='dev-tools@sdh.com.ua',
     description='Table rendering engine',
@@ -31,6 +31,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
         'Topic :: Software Development :: Libraries :: Python Modules',

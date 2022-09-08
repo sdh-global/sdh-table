@@ -50,9 +50,7 @@ class BaseWidget:
 
     def html_cell(self, row_index, row, **kwargs):
         value = self.get_value(row)
-        if value is None:
-            value = '&nbsp;'
-        return mark_safe(value)
+        return value or ' '
 
     def _dict2attr(self, attr):
         if not attr:
@@ -88,7 +86,7 @@ class DateTimeWidget(BaseWidget):
         value = self.get_value(row)
         if value:
             return formats.date_format(value, self.format)
-        return mark_safe('&nbsp;')
+        return ' '
 
 
 class LocalDateTimeWidget(BaseWidget):
@@ -101,7 +99,7 @@ class LocalDateTimeWidget(BaseWidget):
             tz = timezone.get_current_timezone()
             value = value.astimezone(tz)
             return force_text(formats.localize(value, use_l10n=settings.USE_L10N))
-        return mark_safe('&nbsp;')
+        return ' '
 
 
 class HrefWidget(BaseWidget):
@@ -169,7 +167,7 @@ class ConditionHrefWidget(HrefWidget):
             href = self.get_url(row)
         if href:
             return self.render_url(href, value)
-        return mark_safe(value)
+        return value
 
 
 class TemplateWidget(BaseWidget):

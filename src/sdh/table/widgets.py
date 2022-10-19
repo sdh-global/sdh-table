@@ -1,6 +1,6 @@
-from django.conf import settings
+import datetime
 from django.utils import formats, timezone
-from django.utils.encoding import force_text
+from django.utils.formats import date_format
 from django.utils.safestring import mark_safe
 from django.utils.html import escape
 
@@ -93,13 +93,24 @@ class LocalDateTimeWidget(BaseWidget):
     """
     LocalDateTimeWidget for table field which renders the field with localized datetime as column value
     """
+    def __init__(self, *args, **attrs):
+        self.format = attrs.pop('format', 'DATETIME_FORMAT')
+        super().__init__(*args, **attrs)
+
     def html_cell(self, row_index, row, **kwargs):
         value = self.get_value(row)
-        if value:
-            tz = timezone.get_current_timezone()
-            value = value.astimezone(tz)
-            return force_text(formats.localize(value, use_l10n=settings.USE_L10N))
-        return ' '
+        if value is None:
+            return ' '
+
+        if isinstance(value, datetime.datetime) and timezone.is_aware(value):
+            value = timezone.make_naive(value)
+        return date_format(value, self.format)
+
+
+class LocalDateWidget(LocalDateTimeWidget):
+    def __init__(self, *args, **attrs):
+        _format = attrs.pop('format', 'DATE_FORMAT')
+        super().__init__(*args, format=_format, **attrs)
 
 
 class HrefWidget(BaseWidget):

@@ -79,13 +79,20 @@ class DateTimeWidget(BaseWidget):
     DateTimeWidget for table field which renders the field with localized datetime as column value
     """
     def __init__(self, label, format=None, **kwargs):
-        self.format = format or 'DATETIME_FORMAT'
+        self.format = format
         super(DateTimeWidget, self).__init__(label, **kwargs)
 
     def html_cell(self, row_index, row, **kwarg):
         value = self.get_value(row)
+        if isinstance(value, datetime.datetime) and not self.format:
+            _format = 'DATETIME_FORMAT'
+        elif isinstance(value, datetime.date) and not self.format:
+            _format = 'DATE_FORMAT'
+        else:
+            _format = self.format
+
         if value:
-            return formats.date_format(value, self.format)
+            return formats.date_format(value, _format)
         return ' '
 
 
@@ -93,8 +100,8 @@ class LocalDateTimeWidget(BaseWidget):
     """
     LocalDateTimeWidget for table field which renders the field with localized datetime as column value
     """
-    def __init__(self, *args, **attrs):
-        self.format = attrs.pop('format', 'DATETIME_FORMAT')
+    def __init__(self, *args, format=None, **attrs):
+        self.format = format
         super().__init__(*args, **attrs)
 
     def html_cell(self, row_index, row, **kwargs):
@@ -104,12 +111,20 @@ class LocalDateTimeWidget(BaseWidget):
 
         if isinstance(value, datetime.datetime) and timezone.is_aware(value):
             value = timezone.make_naive(value)
+
+        if isinstance(value, datetime.datetime) and not self.format:
+            _format = 'DATETIME_FORMAT'
+        elif isinstance(value, datetime.date) and not self.format:
+            _format = 'DATE_FORMAT'
+        else:
+            _format = self.format
+
         return date_format(value, self.format)
 
 
 class LocalDateWidget(LocalDateTimeWidget):
-    def __init__(self, *args, **attrs):
-        _format = attrs.pop('format', 'DATE_FORMAT')
+    def __init__(self, *args, format=None, **attrs):
+        _format = format or 'DATE_FORMAT'
         super().__init__(*args, format=_format, **attrs)
 
 

@@ -119,7 +119,7 @@ class LocalDateTimeWidget(BaseWidget):
         else:
             _format = self.format
 
-        return date_format(value, self.format)
+        return date_format(value, _format)
 
 
 class LocalDateWidget(LocalDateTimeWidget):

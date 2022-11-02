@@ -50,6 +50,7 @@ class DeclarativeFieldsMetaclass(type):
                                                  'template_body_content',
                                                  'sdh/table/table_body_content.html')
         attrs['template_paginator'] = getattr(attr_meta, 'template_paginator', 'sdh/table/table_paginator.html')
+        attrs['template_context'] = getattr(attr_meta, 'template_context', dict())
         attrs['csv_allow'] = getattr(attr_meta, 'csv_allow', False)
         attrs['csv_dialect'] = getattr(attr_meta, 'csv_dialect', csv.excel)
         attrs['title'] = getattr(attr_meta, 'title', None)
@@ -144,6 +145,9 @@ class TableView(metaclass=DeclarativeFieldsMetaclass):
             # in the resulting queryset.
             # We try to avoid this if possible, for performance reasons.
             source.distinct(base)
+
+    def get_template_context(self, request):
+        return self.template_context
 
 
 class CellTitle:

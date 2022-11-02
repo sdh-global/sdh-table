@@ -1,4 +1,5 @@
 import csv
+import warnings
 from datetime import datetime
 from django.http import HttpResponseRedirect, HttpResponse
 from django.template.loader import render_to_string
@@ -28,12 +29,16 @@ class TableController:
         self.form_filter_instance = None
         self.search_value = None
         self.allow_manage_profiles = True
-        self.render_dict = render_dict or {}
+
         self.row_per_page = row_per_page
         self.table.request = self.request
 
         if row_per_page:
             self._init_paginator()
+
+        if render_dict:
+            warnings.warn("render_dict will be removed. Use template_context")
+        self.render_dict = render_dict or {}
 
     def _init_paginator(self, page=1):
         self.paginator = self.paginator_class(self.source,
@@ -241,10 +246,10 @@ class TableController:
                 return JsonResponse(
                     {'page_count': self.paginator.get_page_count(),
                      'body': render_to_string(self.table.template_body_content,
-                                              {'table': self.table, 'controller': self},
+                                              self.get_template_context(),
                                               self.request),
                      'paginator': render_to_string(self.table.template_paginator,
-                                                   {'table': self.table, 'controller': self},
+                                                   self.get_template_context(),
                                                    self.request)})
 
         if 'search' in self.request.GET:
@@ -318,8 +323,7 @@ class TableController:
         Return detail of applied filter
         :return:
         """
-        
-
+        pass
 
     def get_saved_state(self):
         from .models import TableViewProfile
@@ -336,19 +340,29 @@ class TableController:
     def iter_columns(self):
         for key, column in self.table.columns.items():
             if key in self.table.get_permanent or key in self.visible_columns:
-                yield (key, column)
+                yield key, column
 
     def iter_all_columns(self):
         for key, column in self.table.columns.items():
-            yield (key, column)
+            yield key, column
 
     def iter_all_title(self):
         for key, column in self.iter_all_columns():
-            yield (key, CellTitle(self, key, column))
+            yield key, CellTitle(self, key, column)
 
     def iter_title(self):
         for key, column in self.iter_columns():
-            yield (key, CellTitle(self, key, column))
+            yield key, CellTitle(self, key, column)
+
+    def get_template_context(self):
+        kwargs = {
+            'table': self.table,
+            'filter_form': self.form_filter_instance,
+            'controller': self,
+            'context': self.table.get_template_context(self.request)
+        }
+        kwargs.update(**self.render_dict)
+        return kwargs
 
     def as_html(self):
         if self.search_value:
@@ -359,10 +373,4 @@ class TableController:
         if self.paginator:
             self.paginator.calc()
 
-        kwargs = {
-            'table': self.table,
-            'filter_form': self.form_filter_instance,
-            'controller': self,
-        }
-        kwargs.update(**self.render_dict)
-        return render_to_string(self.table.template, kwargs, self.request)
+        return render_to_string(self.table.template, self.get_template_context(), self.request)

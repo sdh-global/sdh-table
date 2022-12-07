@@ -34,10 +34,16 @@ class QSDataSource(BaseDatasource):
         pass
 
     def set_order(self, order_ref, asc):
-        if asc:
-            self.qs = self.qs.order_by(order_ref)
+        if isinstance(order_ref, (list, tuple)):
+            if asc:
+                self.qs = self.qs.order_by(*order_ref)
+            else:
+                self.qs = self.qs.order_by(*['-%s' % item for item in order_ref])
         else:
-            self.qs = self.qs.order_by('-%s' % order_ref)
+            if asc:
+                self.qs = self.qs.order_by(order_ref)
+            else:
+                self.qs = self.qs.order_by('-%s' % order_ref)
 
     def set_limit(self, start, offset):
         self.qs = self.qs[start:offset]

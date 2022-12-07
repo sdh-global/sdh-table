@@ -18,8 +18,9 @@ class SqlDataSource(BaseDatasource):
 
 
 class QSDataSource(BaseDatasource):
-    def __init__(self, qs):
+    def __init__(self, qs, primary_key='pk'):
         self.qs = qs
+        self.primary_key = primary_key
 
     def __iter__(self):
         return iter(self.qs)
@@ -34,16 +35,13 @@ class QSDataSource(BaseDatasource):
         pass
 
     def set_order(self, order_ref, asc):
-        if isinstance(order_ref, (list, tuple)):
-            if asc:
-                self.qs = self.qs.order_by(*order_ref)
-            else:
-                self.qs = self.qs.order_by(*['-%s' % item for item in order_ref])
+        order_refs = [order_ref]
+        if self.primary_key:
+            order_refs.append(self.primary_key)
+        if asc:
+            self.qs = self.qs.order_by(*order_refs)
         else:
-            if asc:
-                self.qs = self.qs.order_by(order_ref)
-            else:
-                self.qs = self.qs.order_by('-%s' % order_ref)
+            self.qs = self.qs.order_by(*['-%s' % item for item in order_refs])
 
     def set_limit(self, start, offset):
         self.qs = self.qs[start:offset]

@@ -12,7 +12,7 @@ from .datasource import BaseDatasource
 
 
 class TableController:
-    def __init__(self, table, datasource, request, row_per_page=None, render_dict=None, paginator_class=None, primary_key='id'):
+    def __init__(self, table, datasource, request, row_per_page=None, render_dict=None, paginator_class=None):
         self.table = table
         self.request = request
         self.profile = None
@@ -29,7 +29,6 @@ class TableController:
         self.form_filter_instance = None
         self.search_value = None
         self.allow_manage_profiles = True
-        self.primary_key = primary_key
 
         self.row_per_page = row_per_page
         self.table.request = self.request
@@ -88,16 +87,13 @@ class TableController:
                 order_callback = getattr(self.table, 'order_by_%s' % column_name)
                 order_callback(column, self.source, asc)
             else:
-                order_ref = [column.refname]
-                if self.primary_key:
-                    order_ref.append(self.primary_key)
                 if isinstance(self.source, BaseDatasource):
-                    self.source.set_order(order_ref, asc)
+                    self.source.set_order(column.refname, asc)
                 else:
                     if asc:
-                        self.source = self.source.order_by(*order_ref)
+                        self.source = self.source.order_by(column.refname)
                     else:
-                        self.source = self.source.order_by(*['-%s' % item for item in order_ref])
+                        self.source = self.source.order_by('-%s' % column.refname)
             return True
         return False
 

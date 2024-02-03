@@ -209,13 +209,13 @@
                 <a class="dropdown-item" href="?profile=default">{% trans 'default' %}</a>
               {% endif %}
               {% for item in controller.get_saved_state %}
-                {% ifequal item controller.profile %}
+                {% if item == controller.profile %}
                   <a class="dropdown-item" href="?profile={{ item.id }}">{{ item.label }}
                       <span class="icon ion-close-round text-danger" data-profile-id="{{ controller.profile.id }}"></span>
                   </a>
                 {% else %}
                   <a class="dropdown-item" href="?profile={{ item.id }}">{{ item.label }}</a>
-                {% endifequal %}
+                {% endif %}
               {% endfor %}
             </div>
           </div>

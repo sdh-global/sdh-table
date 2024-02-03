@@ -21,11 +21,11 @@ Template example for paginator::
         {% endif %}
 
         {% for page in paginator.get_bar %}
-           {% ifequal page paginator.page %}
+           {% if page == paginator.page %}
               <span>{{ page }}</span>
            {% else %}
               <a href='?page={{ page }}'>{{ page }}</a>
-           {% endifequal %}
+           {% endif %}
         {% endfor %}
 
         {% if paginator.get_next_page_group %}

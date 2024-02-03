@@ -218,7 +218,7 @@ class TableController:
     def process_request(self, **kwargs):
         self.restore(self.request.GET.get('profile'))
 
-        if self.request.is_ajax():
+        if self.request.META.get('HTTP_X_REQUESTED_WITH') == 'XMLHttpRequest':
             if self.request.GET.get('action') == 'save_state':
                 return self.save_state()
 

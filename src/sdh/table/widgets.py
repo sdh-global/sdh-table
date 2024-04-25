@@ -134,8 +134,9 @@ class HrefWidget(BaseWidget):
     Usage example:
         email = widgets.HrefWidget(_('Email'), refname='email', reverse='user-retrieve', reverse_column='email')
     """
-    def __init__(self, label, href=None, reverse=None, reverse_column=None, **kwargs):
+    def __init__(self, label, href=None, reverse=None, reverse_column=None, is_target_blank=False, **kwargs):
         self.href = href
+        self.is_target_blank = is_target_blank
         self.reverse = reverse
         if not reverse_column:
             self.reverse_column = ('id',)
@@ -154,14 +155,17 @@ class HrefWidget(BaseWidget):
         return self.href
 
     @staticmethod
-    def render_url(href, value):
-        return mark_safe("<a href='%s'>%s</a>" % (href, escape(value)))
+    def render_url(href, value, is_target_blank=False):
+        if is_target_blank:
+            return mark_safe("<a href='%s' target='_blank'>%s</a>" % (href, escape(value)))
+        else:
+            return mark_safe("<a href='%s'>%s</a>" % (href, escape(value)))
 
     def html_cell(self, row_index, row, **kwargs):
         href = self.get_url(row)
         value = self.get_value(row, default='')
         if href:
-            return self.render_url(href, value)
+            return self.render_url(href, value, self.is_target_blank)
         return value
 
 
@@ -192,7 +196,7 @@ class ConditionHrefWidget(HrefWidget):
         if is_href:
             href = self.get_url(row)
         if href:
-            return self.render_url(href, value)
+            return self.render_url(href, value, self.is_target_blank)
         return value
 
 

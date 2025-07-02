@@ -23,20 +23,24 @@ class TableViewProfile(models.Model):
 
     @property
     def state(self):
-        dump = codecs.decode(self.dump, 'hex_codec')
         try:
-            return pickle.loads(dump)
+            raw = bytes.fromhex(self.dump)
+        except ValueError:
+            return None
+
+        try:
+            return pickle.loads(raw)
         except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, IndexError, UnicodeDecodeError):
             pass
 
         try:
             # Using encoding='latin1' is required for unpickling NumPy arrays
             # and instances of datetime, date and time pickled by Python 2.
-            return pickle.loads(dump, encoding="latin1")
+            return pickle.loads(raw, encoding="latin1")
         except (pickle.UnpicklingError, EOFError, AttributeError, ImportError, IndexError, UnicodeDecodeError):
             pass
 
     @classmethod
     def dump_state(cls, data):
         dump = pickle.dumps(data, cls.PICKLE_PROTOCOL)
-        return codecs.encode(dump, 'hex_codec').decode('ascii')
+        return dump.hex()

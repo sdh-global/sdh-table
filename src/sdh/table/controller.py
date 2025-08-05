@@ -1,14 +1,14 @@
 import csv
 import warnings
 from datetime import datetime
-from django.http import HttpResponseRedirect, HttpResponse
-from django.template.loader import render_to_string
-from django.http import JsonResponse
 
-from .table import CellTitle, BoundRow
-from .shortcuts import get_object_or_none, fn_value
-from .paginator import Paginator
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.template.loader import render_to_string
+
 from .datasource import BaseDatasource
+from .paginator import Paginator
+from .shortcuts import fn_value, get_object_or_none
+from .table import BoundRow, CellTitle
 
 
 class TableController:
@@ -140,7 +140,8 @@ class TableController:
             profile_qs = profile_qs.filter(user=self.request.user)
             
         if profile_id == 'default' and self.request.user:
-            self.profile, created = TableViewProfile.objects.get_or_create(
+            self.profile = get_object_or_none(
+                TableViewProfile,
                 tableview_name=self.table.id,
                 user=self.request.user,
                 is_default=True)

@@ -20,6 +20,13 @@ class TableViewProfile(models.Model):
 
     class Meta:
         db_table = 'tableview_profile'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'tableview_name'],
+                condition=models.Q(is_default=True),
+                name='unique_default_per_user_tableview'
+            )
+        ]
 
     @property
     def state(self):

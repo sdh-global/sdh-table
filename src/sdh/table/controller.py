@@ -1,6 +1,9 @@
 import csv
 import warnings
 from datetime import datetime
+
+from django.conf import settings
+from django.http.request import QueryDict
 from django.http import HttpResponseRedirect, HttpResponse
 from django.template.loader import render_to_string
 from django.http import JsonResponse
@@ -25,7 +28,9 @@ class TableController:
         self.visible_columns = self.table.get_default_visible
         self.sort_by = []
         self.sort_asc = True
+        self.query_string = ''
         self.filter = {}
+        self.filter_data_save = settings.SESSION_SERIALIZER != 'django.contrib.sessions.serializers.JSONSerializer'
         self.form_filter_instance = None
         self.search_value = None
         self.allow_manage_profiles = True
@@ -111,6 +116,7 @@ class TableController:
         self.visible_columns = state.get('visible', self.table.get_default_visible)
         self.sort_by = state.get('sort_by')
         self.filter = state.get('filter', {}) or {}  # due some old profile save default as list
+        self.query_string = state.get('query_string', '')
         if self.sort_by:
             self.set_sort(self.sort_by)
 
@@ -118,7 +124,8 @@ class TableController:
         return {
             'visible': self.visible_columns,
             'sort_by': self.get_sort(),
-            'filter': self.filter
+            'filter': self.filter,
+            'query_string': self.query_string,
         }
 
     def apply_search(self, value):
@@ -138,7 +145,7 @@ class TableController:
             profile_qs = profile_qs.filter(user__isnull=True)
         elif not fn_value(self.request.user.is_anonymous):
             profile_qs = profile_qs.filter(user=self.request.user)
-            
+
         if profile_id == 'default' and self.request.user:
             self.profile, created = TableViewProfile.objects.get_or_create(
                 tableview_name=self.table.id,
@@ -164,12 +171,18 @@ class TableController:
             self.apply_state(state)
 
     def save(self):
-        self.request.session["tableview_%s" % self.table.id] = self.get_state()
+        state = self.get_state()
+        if not self.filter_data_save:
+            state.pop('filter', None)
+        self.request.session["tableview_%s" % self.table.id] = state
 
     def save_state(self, name=None):
         from .models import TableViewProfile
 
         state = self.get_state()
+        if not self.filter_data_save:
+            state.pop('filter', None)
+
         dump = TableViewProfile.dump_state(state)
 
         kwargs = {
@@ -308,13 +321,25 @@ class TableController:
             form = self.table.filter_form(self.request.POST, request=self.request, **params)
             if form.is_valid():
                 self.filter = form.cleaned_data
+                query = self.request.POST.copy()
+                query.pop('csrfmiddlewaretoken')
+                self.query_string = query.urlencode()
                 self.save()
                 return HttpResponseRedirect("?profile=custom")
         elif self.request.method == 'POST' and 'form_filter_reset' in self.request.POST:
             form = self.table.filter_form(None, initial={}, request=self.request, **params)
             self.filter = {}
+            self.query_string = ''
         else:
-            form = self.table.filter_form(request=self.request, initial=self.filter, **params)
+            if self.filter_data_save:
+                form = self.table.filter_form(request=self.request, initial=self.filter, **params)
+            elif self.query_string:
+                data = QueryDict(self.query_string)
+                form = self.table.filter_form(data, request=self.request, **params)
+                if form.is_valid():
+                    self.filter = form.cleaned_data
+            else:
+                form = self.table.filter_form(request=self.request, **params)
 
         self.form_filter_instance = form
 

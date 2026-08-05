@@ -39,6 +39,7 @@ class DeclarativeFieldsMetaclass(type):
         attrs['permanent'] = getattr(attr_meta, 'permanent', ())
         attrs['default_visible'] = getattr(attr_meta, 'default_visible', ())
         attrs['sortable'] = getattr(attr_meta, 'sortable', ())
+        attrs['default_sorting'] = getattr(attr_meta, 'default_sorting', None)
         attrs['filter_form'] = getattr(attr_meta, 'filter_form', None)
         attrs['search'] = getattr(attr_meta, 'search', None)
         attrs['use_keyboard'] = getattr(attr_meta, 'use_keyboard', False)

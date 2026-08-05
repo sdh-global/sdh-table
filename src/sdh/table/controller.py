@@ -72,6 +72,10 @@ class TableController:
         if self.paginator:
             self.paginator.page = page_number
 
+    @property
+    def is_sorted(self):
+        return bool(self.sort_by)
+
     def set_sort(self, column_name):
         asc = True
         if column_name.startswith('-'):
@@ -262,6 +266,8 @@ class TableController:
         if 'sort_by' in self.request.GET:
             self.set_sort(self.request.GET.get('sort_by'))
             rc = HttpResponseRedirect('?profile=custom')
+        elif not self.is_sorted and self.table.default_sorting:
+            self.set_sort(self.table.default_sorting)
 
         if 'csv' in self.request.GET and self.table.csv_allow:
             return self.download_csv(self.request)
